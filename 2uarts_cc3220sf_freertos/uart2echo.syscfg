@@ -1,0 +1,66 @@
+/**
+ * These arguments were used when this file was generated. They will be automatically applied on subsequent loads
+ * via the GUI or CLI. Run CLI with '--help' for additional information on how to override these arguments.
+ * @cliArgs --board "/ti/boards/CC3220SF_LAUNCHXL" --rtos "freertos" --product "simplelink_cc32xx_sdk@6.10.00.05"
+ * @versions {"tool":"1.12.0+2406"}
+ */
+
+/**
+ * Import the modules used in this configuration.
+ */
+const GPIO    = scripting.addModule("/ti/drivers/GPIO");
+const UART    = scripting.addModule("/ti/drivers/UART", {}, false);
+const UART1   = UART.addInstance();
+const UART2   = UART.addInstance();
+const Button  = scripting.addModule("/ti/drivers/apps/Button", {}, false);
+const Button1 = Button.addInstance();
+const Button2 = Button.addInstance();
+const LED     = scripting.addModule("/ti/drivers/apps/LED", {}, false);
+const LED1    = LED.addInstance();
+const LED2    = LED.addInstance();
+const LED3    = LED.addInstance();
+
+/**
+ * Write custom configuration values to the imported modules.
+ */
+UART1.$name              = "CONFIG_UART_1";
+UART1.uart.$assign       = "UART1";
+UART1.uart.txPin.$assign = "boosterpack.15";
+UART1.uart.rxPin.$assign = "boosterpack.18";
+
+const Power          = scripting.addModule("/ti/drivers/Power", {}, false);
+Power.parkPins.$name = "ti_drivers_power_PowerCC32XXPins0";
+
+UART2.$name              = "CONFIG_UART_0";
+UART2.$hardware          = system.deviceData.board.components.XDS110UART;
+UART2.uart.$assign       = "UART0";
+UART2.uart.txPin.$assign = "ball.55";
+UART2.uart.rxPin.$assign = "ball.57";
+
+Button1.$name                    = "CONFIG_BUTTON_0";
+Button1.$hardware                = system.deviceData.board.components.SW2;
+Button1.gpioPin.callbackFunction = "ButtonLeftCallback";
+
+Button2.$name                    = "CONFIG_BUTTON_1";
+Button2.$hardware                = system.deviceData.board.components.SW3;
+Button2.gpioPin.callbackFunction = "ButtonRightCallback";
+
+LED1.$name          = "CONFIG_LED_0";
+LED1.$hardware      = system.deviceData.board.components.LED_RED;
+LED1.ledPin.$assign = "boosterpack.29";
+
+LED2.$name     = "CONFIG_LED_1";
+LED2.$hardware = system.deviceData.board.components.LED_GREEN;
+
+LED3.$name     = "CONFIG_LED_2";
+LED3.$hardware = system.deviceData.board.components.LED_YELLOW;
+
+/**
+ * Pinmux solution for unlocked pins/peripherals. This ensures that minor changes to the automatic solver in a future
+ * version of the tool will not impact the pinmux you originally saw.  These lines can be completely deleted in order to
+ * re-solve from scratch.
+ */
+Button1.button.$suggestSolution = "boosterpack.3";
+Button2.button.$suggestSolution = "boosterpack.11";
+LED2.ledPin.$suggestSolution    = "boosterpack.10";
+LED3.ledPin.$suggestSolution    = "boosterpack.9";
