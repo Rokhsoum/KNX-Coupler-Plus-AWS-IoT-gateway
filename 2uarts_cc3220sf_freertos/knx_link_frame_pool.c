@@ -105,36 +105,6 @@ void knxLinkPoolYieldLock(int i) {
     }
 }
 
-#if 0
-void knxLinkPoolLinkYieldLock(int i) {
-    int len = KNX_LINK_STD_FRAME_MAX;
-    char frame[len];
-    uint8_t confirmation;
-
-    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-
-        if (knxLinkParams.rxiaframe != knxLinkParams.ia) {
-        UART_read(knxLinkParams.uartKNX, &frame[i], 1);
-
-        UART_write(knxLinkParams.uartKNX, &frame[i], 1);
-
-        xQueueSend(knxLinkDataInd, &i, portMAX_DELAY);
-        }
-    }
-    else
-    {
-        UART_read(knxLinkParams.uartKNX, &confirmation, 1);
-        for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            UART_write(uartKNX, &frame[i], 1);
-
-            xQueueSend(knxLinkDataCon, &i, portMAX_DELAY);
-            xQueueSend(knxLinkDataCon, &confirmation, portMAX_DELAY);
-        }
-    }
-
-}
-#endif
-
 
 void knxLinkPoolAppYieldLock(int i) {
     knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_APP;
@@ -236,36 +206,3 @@ knxLinkFrame_t *knxLinkPoolLinkGet(int i) {
     }
     return res;
 }
-
-#if 0
-    int i;
-
-    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-        knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_SLOT_LOCKED_APP;
-    }
-
-    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-    knxLinkFramePool.flags[i] = frames[i];
-    }
-
-    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-        UART_write(uart_t uart, const uint8_t *frame[i], size_t len);
-    }
-
-    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-        UART_read(uart_t uart, &confirmation, uint32_t length, uint32_t timeOutMs);
-    }
-
-    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-        knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_SLOT_LOCKED_AVAILABLE);
-    }
-
-    if (rxiaframe != ia) {
-        int frame_index;
-        xQueueReceive(knxDataInd, &frame_index, xTicksToWait);
-        knxLinkPoolLinkYieldLock(i);
-
-        knxLinkPoolAppUnLock(i);
-    }
-#endif
-

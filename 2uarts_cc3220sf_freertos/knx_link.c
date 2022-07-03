@@ -46,7 +46,6 @@
  */
 static knxLinkHandle_t knxLinkParams;
 
-
 /**
  * @brief Reception task, manage incoming data from TP-UART 
  */

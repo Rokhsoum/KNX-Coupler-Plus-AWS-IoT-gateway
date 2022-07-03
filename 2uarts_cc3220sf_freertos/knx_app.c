@@ -1,6 +1,7 @@
 /*
  * knx_app.c
  */
+#include <knx_link_conf.h>
 #include "FreeRTOS.h"
 #include <task.h>
 #include <stdint.h>
@@ -12,8 +13,6 @@
 #include "knx_link_gadd_pool.h"
 #include "knx_link_frame.h"
 #include "knx_link_frame_pool.h"
-
-/* Driver Header files */
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/UART.h>
 #include <ti/drivers/apps/Button.h>
@@ -37,9 +36,25 @@ typedef struct knxAppParams_s {
 
 
 /**
+ * Tipo estructurado con todos los parámetros del button
+ */
+typedef struct {
+    uint8_t buttonID;
+    uint8_t buttonValue;
+} buttonMessageItem_t;
+
+
+/**
  * Variable privada con todos los parámetros del nivel de application
  */
 static knxAppParams_t knxAppParams;
+
+
+/**
+ * Variable privada con todos los parámetros del nivel de application
+ */
+
+static buttonMessageItem_t buttonInf;
 
 
 // ............................................................................
@@ -93,39 +108,37 @@ struct knxAppParams_s * knxAppInit(void) {
     TaskHandle_t knxAppRecvThreadHandle = NULL;
     xTaskCreate(knxAppRecvThread, "knxAppRecvThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
 
-    /**
+
     TaskFunction_t ledVerdeAppThread = NULL;
     TaskHandle_t ledVerdeAppThreadHandle = NULL;
     xTaskCreate(ledVerdeAppThread, "ledVerdeAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledVerdeAppThreadHandle);
 
     TaskFunction_t ledAmarilloAppThread = NULL;
     TaskHandle_t ledAmarilloAppThreadHandle = NULL;
-    xTaskCreate(ledAmarilloAppThread, "ledAmarilloAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledAmarilloAppThreadHandle); */
-
-#if 0
-    //a mettre dans main void
-    Button_Params buttonParams;
-
-    Button_Params_init(&buttonParams);
-
-    Button_open(CONFIG_BUTTON_0, &buttonParams); //(Callback)
-    Button_open(CONFIG_BUTTON_1, &buttonParams);
-#endif
+    xTaskCreate(ledAmarilloAppThread, "ledAmarilloAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledAmarilloAppThreadHandle);
 
     return UART_STATUS_SUCCESS;;
 }
 
 
-void ButtonLeftCallback(Button_Handle buttonHandle, Button_EventMask buttonEvents) {
+void ButtonLeftCallback(Button_Handle buttonLeft, Button_EventMask buttonEvents) {
 
-    xQueueSend(knxAppParams.buttonsKNXQueue, &GA_SET_BOTON_0, portMAX_DELAY);
-
+    buttonInf.buttonID = CONFIG_BUTTON_0;
+    buttonInf.buttonValue = 1;
+    if (buttonEvents & Button_EV_CLICKED) {
+    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonID, portMAX_DELAY);
+    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+    }
 }
 
-void ButtonRightCallback(Button_Handle buttonHandle, Button_EventMask buttonEvents) {
+void ButtonRightCallback(Button_Handle buttonRight, Button_EventMask buttonEvents) {
 
-    xQueueSend(knxAppParams.buttonsKNXQueue, &GA_SET_BOTON_1, portMAX_DELAY);
-
+    buttonInf.buttonID = CONFIG_BUTTON_1;
+    buttonInf.buttonValue = 1;
+    if (buttonEvents & Button_EV_CLICKED) {
+    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonID, portMAX_DELAY);
+    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+    }
 }
 
 
@@ -135,9 +148,9 @@ void knxAppThread(void) {
     knxLinkFrame_t      *frame;
     knxLinkHandle_t     *link;
     int i;
-    uint8_t confirmation;
 
-    xQueueReceive(knxAppParams.buttonsKNXQueue, &GA_SET_BOTON_0, portMAX_DELAY);
+    xQueueReceive(knxAppParams.buttonsKNXQueue, &buttonInf.buttonID, portMAX_DELAY);
+    xQueueReceive(knxAppParams.buttonsKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
 
     for (i = 0; i < knxAppParams.gas_boton_0.used-1; i++) {
         slots[i] = knxLinkPoolAppLock();
@@ -166,7 +179,7 @@ void knxAppThread(void) {
 
     for (i = 0; i < knxAppParams.gas_boton_0.used-1; i++) {
         if (frames[i] != NULL) {
-            xQueueReceive(link->knxLinkDataCon, &confirmation, portMAX_DELAY);
+            recvDataCon();
         }
     }
 
@@ -174,7 +187,6 @@ void knxAppThread(void) {
         knxLinkPoolAppUnLock(slots[i]);
     }
 
-    xQueueReceive(knxAppParams.buttonsKNXQueue, &GA_SET_BOTON_1, portMAX_DELAY);
 
     for (i = 0; i < knxAppParams.gas_boton_1.used-1; i++) {
         slots[i] = knxLinkPoolAppLock();
@@ -204,7 +216,7 @@ void knxAppThread(void) {
 
     for (i = 0; i < knxAppParams.gas_boton_1.used-1; i++) {
         if (frames[i] != NULL) {
-            xQueueReceive(link->knxLinkDataCon, &confirmation, portMAX_DELAY);
+            recvDataCon();
         }
     }
 
@@ -215,19 +227,18 @@ void knxAppThread(void) {
 
 
 void knxAppRecvThread(void) {
-    int i;
+    int i =0 ;
     knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frame;
-    knxLinkHandle_t     *link = NULL;
 
-    xQueueReceive(link->knxLinkDataInd, &i, portMAX_DELAY);
+    recvDataInd(i);
 
     for (i = 0; i < knxAppParams.gas_led_verde.used-1; i++) {
         if (frames[i] != NULL) {
             frame->da = knxAppParams.gas_led_verde.ga_set[i];
 
             if(ga_set_in(&knxAppParams.gas_led_verde, frame->da) == 1) {
-            xQueueSend(knxAppParams.ledVerdeKNXQueue, &frame->da, portMAX_DELAY);
+                xQueueReceive(knxAppParams.ledVerdeKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
             }
         }
     }
@@ -237,7 +248,7 @@ void knxAppRecvThread(void) {
             frame->da = knxAppParams.gas_led_amarillo.ga_set[i];
 
             if(ga_set_in(&knxAppParams.gas_led_amarillo, frame->da) == 1) {
-            xQueueSend(knxAppParams.ledAmarilloKNXQueue, &frame->da, portMAX_DELAY);
+                xQueueReceive(knxAppParams.ledAmarilloKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
             }
         }
     }
@@ -245,7 +256,7 @@ void knxAppRecvThread(void) {
 
 
 void ledVerdeAppThread(void) {
-    xQueueReceive(knxAppParams.ledVerdeKNXQueue, &knxAppParams.gas_led_verde, portMAX_DELAY);
+    xQueueReceive(knxAppParams.ledVerdeKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
 
     LED_Params ledParams;
     LED_Handle ledVerde;
@@ -258,7 +269,7 @@ void ledVerdeAppThread(void) {
 }
 
 void ledAmarilloAppThread(void) {
-    xQueueReceive(knxAppParams.ledVerdeKNXQueue, &knxAppParams.gas_led_amarillo, portMAX_DELAY);
+    xQueueReceive(knxAppParams.ledVerdeKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
 
 
     LED_Params ledParams;

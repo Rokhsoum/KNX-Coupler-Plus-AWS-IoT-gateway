@@ -11,9 +11,6 @@
 #include "FreeRTOS.h"
 #include <task.h>
 #include <stdint.h>
-#include "knx_app.h"
-#include "knx_link.h"
-#include "knx_commissioning_data.h"
 #include "knx_link_gadd_pool.h"
 
 #include <ti/drivers/apps/Button.h>
@@ -49,8 +46,10 @@ void knxAppThread(void);
  */
 void knxAppRecvThread(void);
 
+//
 void ledVerdeAppThread(void);
 
+//
 void ledAmarilloAppThread(void);
 
 

@@ -2,8 +2,10 @@
  * main.c
  */
 
+#include <knx_link_conf.h>
 #include "knx_link.h"
 #include "knx_app.h"
+#include "knx_link_internal.h"
 
 /* Driver Header files */
 #include <ti/drivers/GPIO.h>
@@ -17,29 +19,39 @@
 
 int main(void) {
 
+    knxLinkInit(0, 0, 0);
+
+    knxLinkHandle_t *link = NULL;
+    int frame_index = 0;
+
+    knxLinkSetAddressReq(link, frame_index);
+    knxLinkResetReq(link);
+    knxLinkResetCon(link);
+
+    sendDataReq(frame_index);
+    knxLinkDataReq(link, frame_index);
+    knxLinkSendDataCon(link);
+    knxLinkDataInd(link);
+    recvDataCon();
+    recvDataInd(frame_index);
+
+
+    knxAppInit();
+
     Button_Params buttonParams;
     Button_Handle buttonLeft;
     Button_Handle buttonRight;
-    Button_EventMask events;
 
     Button_Params_init(&buttonParams);
 
-    buttonLeft = Button_open(CONFIG_BUTTON_0, &buttonParams); //(Callback)
+    buttonLeft = Button_open(CONFIG_BUTTON_0, &buttonParams); //mettre Callback
     buttonRight = Button_open(CONFIG_BUTTON_1, &buttonParams);
 
-    if (Button_EV_CLICKED) {
-        // Received a click, handle app condition 0 etc
-        ButtonLefttCallback(buttonLeft, events);
-        knxAppThread();
-        ledVerdeAppThread();
-    }
+    knxAppThread();
+    knxAppRecvThread();
 
-    if (Button_EV_CLICKED) {
-        // Received a click, handle app condition 0 etc
-        ButtonLefttCallback(buttonRight, events);
-        knxAppThread();
-        ledAmarilloAppThread();
-    }
+    ledVerdeAppThread();
+    ledAmarilloAppThread();
 
 	return 0;
 }
