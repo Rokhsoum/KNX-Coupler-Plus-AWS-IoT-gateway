@@ -30,8 +30,8 @@ typedef struct knxAppParams_s {
     ga_set_type gas_boton_0, gas_boton_1;
     ga_set_type gas_led_verde, gas_led_amarillo;
     QueueHandle_t buttonsKNXQueue;
-    QueueHandle_t ledVerdeKNXQueue;
-    QueueHandle_t ledAmarilloKNXQueue;
+    QueueHandle_t ledGreenKNXQueue;
+    QueueHandle_t ledYellowKNXQueue;
 } knxAppParams_t;
 
 
@@ -49,9 +49,28 @@ typedef struct {
  */
 static knxAppParams_t knxAppParams;
 
+/**
+ * @brief   Manage button notifications for sending KNX telegrams
+ */
+static void _knxAppThread(void *arg0);
 
 /**
- * Variable privada con todos los parámetros del nivel de application
+ * @brief   Manage incoming KNX telegrams to change the status of LEDs
+ */
+static void _knxAppRecvThread(void *arg0);
+
+/**
+ * @brief   Extracts a value from the ledGreenQUEUE queue and switches the output value of the green LED
+ */
+static void _ledGreenAppThread(void *arg0);
+
+/**
+ * @brief   Extracts a value from the ledYellowQUEUE queue and switches the output value of the yellow LED
+ */
+static void _ledYellowAppThread(void *arg0);
+
+/**
+ * Variable privada con todos los parámetros del boton
  */
 
 static buttonMessageItem_t buttonInf;
@@ -100,22 +119,21 @@ struct knxAppParams_s * knxAppInit(void) {
 
     knxAppParams.buttonsKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, 1);
 
-    TaskFunction_t knxAppThread = NULL;
+
     TaskHandle_t knxAppThreadHandle = NULL;
-    xTaskCreate(knxAppThread, "knxAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppThreadHandle);
+    xTaskCreate(_knxAppThread, "knxAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppThreadHandle);
 
-    TaskFunction_t knxAppRecvThread = NULL;
+
     TaskHandle_t knxAppRecvThreadHandle = NULL;
-    xTaskCreate(knxAppRecvThread, "knxAppRecvThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
+    xTaskCreate(_knxAppRecvThread, "knxAppRecvThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
 
 
-    TaskFunction_t ledVerdeAppThread = NULL;
-    TaskHandle_t ledVerdeAppThreadHandle = NULL;
-    xTaskCreate(ledVerdeAppThread, "ledVerdeAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledVerdeAppThreadHandle);
+    TaskHandle_t ledGreenAppThreadHandle = NULL;
+    xTaskCreate(_ledGreenAppThread, "ledGreenAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledGreenAppThreadHandle);
 
-    TaskFunction_t ledAmarilloAppThread = NULL;
-    TaskHandle_t ledAmarilloAppThreadHandle = NULL;
-    xTaskCreate(ledAmarilloAppThread, "ledAmarilloAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledAmarilloAppThreadHandle);
+
+    TaskHandle_t ledYellowAppThreadHandle = NULL;
+    xTaskCreate(_ledYellowAppThread, "ledYellowAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledYellowAppThreadHandle);
 
     return UART_STATUS_SUCCESS;;
 }
@@ -126,8 +144,7 @@ void ButtonLeftCallback(Button_Handle buttonLeft, Button_EventMask buttonEvents)
     buttonInf.buttonID = CONFIG_BUTTON_0;
     buttonInf.buttonValue = 1;
     if (buttonEvents & Button_EV_CLICKED) {
-    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonID, portMAX_DELAY);
-    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
     }
 }
 
@@ -136,13 +153,12 @@ void ButtonRightCallback(Button_Handle buttonRight, Button_EventMask buttonEvent
     buttonInf.buttonID = CONFIG_BUTTON_1;
     buttonInf.buttonValue = 1;
     if (buttonEvents & Button_EV_CLICKED) {
-    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonID, portMAX_DELAY);
-    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
     }
 }
 
 
-void knxAppThread(void) {
+void _knxAppThread(void *arg0) {
     uint8_t             slots[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frame;
@@ -226,7 +242,7 @@ void knxAppThread(void) {
 }
 
 
-void knxAppRecvThread(void) {
+void _knxAppRecvThread(void *arg0) {
     int i =0 ;
     knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frame;
@@ -238,7 +254,7 @@ void knxAppRecvThread(void) {
             frame->da = knxAppParams.gas_led_verde.ga_set[i];
 
             if(ga_set_in(&knxAppParams.gas_led_verde, frame->da) == 1) {
-                xQueueReceive(knxAppParams.ledVerdeKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+                xQueueReceive(knxAppParams.ledGreenKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
             }
         }
     }
@@ -248,38 +264,38 @@ void knxAppRecvThread(void) {
             frame->da = knxAppParams.gas_led_amarillo.ga_set[i];
 
             if(ga_set_in(&knxAppParams.gas_led_amarillo, frame->da) == 1) {
-                xQueueReceive(knxAppParams.ledAmarilloKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+                xQueueReceive(knxAppParams.ledYellowKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
             }
         }
     }
 }
 
 
-void ledVerdeAppThread(void) {
-    xQueueReceive(knxAppParams.ledVerdeKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+void _ledGreenAppThread(void *arg0) {
+    xQueueReceive(knxAppParams.ledGreenKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
 
     LED_Params ledParams;
-    LED_Handle ledVerde;
+    LED_Handle ledGreen;
 
     LED_Params_init(&ledParams);
 
-    ledVerde = LED_open(CONFIG_LED_1, &ledParams);
+    ledGreen = LED_open(CONFIG_LED_1, &ledParams);
 
-    LED_toggle(ledVerde);
+    LED_toggle(ledGreen);
 }
 
-void ledAmarilloAppThread(void) {
-    xQueueReceive(knxAppParams.ledVerdeKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+void _ledYellowAppThread(void *arg0) {
+    xQueueReceive(knxAppParams.ledGreenKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
 
 
     LED_Params ledParams;
-    LED_Handle ledAmarillo;
+    LED_Handle ledYellow;
 
     LED_Params_init(&ledParams);
 
-    ledAmarillo = LED_open(CONFIG_LED_2, &ledParams);
+    ledYellow = LED_open(CONFIG_LED_2, &ledParams);
 
-    LED_toggle(ledAmarillo);
+    LED_toggle(ledYellow);
 
 }
 

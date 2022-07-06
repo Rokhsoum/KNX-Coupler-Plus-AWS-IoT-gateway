@@ -26,31 +26,20 @@ struct knxAppParams_s;
 
 /**
  * Initialize KNX app
- * @return NULL if error, pointer to allocated app handle otherwise
+ * @return NULL if error, pointer to allocated application handle otherwise
  */
 struct knxAppParams_s * knxAppInit(void);
 
+/**
+ * @brief   Callback function of the button SW2
+ */
+void ButtonLeftCallback(Button_Handle buttonLeft, Button_EventMask buttonEvents);
 
-void ButtonLeftCallback(Button_Handle buttonHandle, Button_EventMask buttonEvents);
 
+/**
+ * @brief   Callback function of the button SW3
+ */
 void ButtonRightCallback(Button_Handle buttonHandle, Button_EventMask buttonEvents);
-
-/**
- * @brief   Function that manage button notifications for sending KNX telegrams
- */
-void knxAppThread(void);
-
-
-/**
- * @brief   Function that manage incoming KNX telegrams to change the status of LEDs
- */
-void knxAppRecvThread(void);
-
-//
-void ledVerdeAppThread(void);
-
-//
-void ledAmarilloAppThread(void);
 
 
 #endif /* KNX_APP_H_ */

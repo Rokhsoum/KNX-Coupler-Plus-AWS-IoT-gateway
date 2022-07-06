@@ -70,10 +70,6 @@ typedef struct {
     uint8_t confirmation;   /**< Confirmation value for the data service */
 } knxLinkDataCon_t;
 
-/**
- * Variable privada con todos los parámetros del data confirmation
- */
-knxLinkDataCon_t knxLinkDataParams;
 
 /**
  * @brief Data service, request primitive

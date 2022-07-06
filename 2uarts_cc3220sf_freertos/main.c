@@ -21,21 +21,6 @@ int main(void) {
 
     knxLinkInit(0, 0, 0);
 
-    knxLinkHandle_t *link = NULL;
-    int frame_index = 0;
-
-    knxLinkSetAddressReq(link, frame_index);
-    knxLinkResetReq(link);
-    knxLinkResetCon(link);
-
-    sendDataReq(frame_index);
-    knxLinkDataReq(link, frame_index);
-    knxLinkSendDataCon(link);
-    knxLinkDataInd(link);
-    recvDataCon();
-    recvDataInd(frame_index);
-
-
     knxAppInit();
 
     Button_Params buttonParams;
@@ -47,11 +32,7 @@ int main(void) {
     buttonLeft = Button_open(CONFIG_BUTTON_0, &buttonParams); //mettre Callback
     buttonRight = Button_open(CONFIG_BUTTON_1, &buttonParams);
 
-    knxAppThread();
-    knxAppRecvThread();
 
-    ledVerdeAppThread();
-    ledAmarilloAppThread();
 
 	return 0;
 }

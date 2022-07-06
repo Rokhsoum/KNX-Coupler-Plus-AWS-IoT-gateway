@@ -46,11 +46,16 @@
 /* Driver Header files */
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/UART.h>
+#include <ti/drivers/apps/Button.h>
+#include <ti/drivers/apps/LED.h>
 
 /* Driver configuration */
 #include "ti_drivers_config.h"
 
 #include "uart2echo.h"
+#include "knx_link.h"
+#include "knx_app.h"
+#include "knx_link_adapter.h"
 
 #define UART_CH_NAME        10
 typedef struct {
@@ -120,9 +125,17 @@ static void uartEcho(void *arg) {
  */
 void mainThread(void *arg0)
 {
-    UART_Handle uartUplink;
+
     UART_Params uartParams;
+    UART_Handle uartUplink;
     UART_Handle uartDownlink;
+    Button_Params buttonParams;
+    Button_Handle buttonLeft;
+    Button_Handle buttonRight;
+    LED_Params ledParams;
+    LED_Handle ledGreen;
+    LED_Handle ledYellow;
+    LED_Handle ledRed;
     size_t      bytesWritten;
 
     /* Call driver init functions */
@@ -178,6 +191,32 @@ void mainThread(void *arg0)
 
     create_task(uartEcho, &taskUplink_args, "upLinkTh", tskIDLE_PRIORITY);
     create_task(uartEcho, &taskDownlink_args, "downLinkTh", tskIDLE_PRIORITY);
+
+
+    LED_Params_init(&ledParams);
+    ledRed = LED_open(CONFIG_LED_0, &ledParams);
+    ledGreen = LED_open(CONFIG_LED_1, &ledParams);
+    ledYellow = LED_open(CONFIG_LED_2, &ledParams);
+
+    Button_Params_init(&buttonParams);
+    buttonParams.debounceDuration = 10;
+    buttonParams.longPressDuration = 2000;
+    buttonParams.buttonEventMask = 0xFF;
+    buttonParams.buttonCallback = &ButtonLeftCallback;
+    buttonParams.buttonCallback = &ButtonRightCallback;
+
+    buttonLeft = Button_open(CONFIG_BUTTON_0, &buttonParams);
+    buttonRight = Button_open(CONFIG_BUTTON_1, &buttonParams);
+
+    if ((buttonLeft == NULL) || (buttonRight == NULL)) {
+        /* button_open() failed, turn on user LED */
+        LED_startBlinking(ledRed, 250, LED_BLINK_FOREVER);
+        while (1);
+    }
+
+    knxLinkInit(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_NONE);
+
+    knxAppInit();
 
     /* Loop forever doing nothing */
     while (1) {

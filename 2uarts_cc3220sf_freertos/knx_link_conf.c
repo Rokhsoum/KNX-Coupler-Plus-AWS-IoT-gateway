@@ -8,6 +8,7 @@
 
 
 knxLinkHandle_t     *link;
+knxLinkDataCon_t    conf;
 
 
 void sendDataReq(int frame_index) {
@@ -16,10 +17,8 @@ void sendDataReq(int frame_index) {
 
 
 void recvDataCon(void) {
-    xQueueReceive(link->knxLinkDataCon, &knxLinkDataParams.frame_index, portMAX_DELAY);
-    xQueueReceive(link->knxLinkDataCon, &knxLinkDataParams.confirmation, portMAX_DELAY);
+    xQueueReceive(link->knxLinkDataCon, &conf, portMAX_DELAY);
 }
-
 
 void recvDataInd(int frame_index) {
     xQueueReceive(link->knxLinkDataInd, &frame_index, portMAX_DELAY);
