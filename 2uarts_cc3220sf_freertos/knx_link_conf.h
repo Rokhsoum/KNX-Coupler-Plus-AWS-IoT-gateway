@@ -8,11 +8,21 @@
 #ifndef KNX_LINK_CONF_H_
 #define KNX_LINK_CONF_H_
 
-
+/**
+ * @brief   Write to the knxLinkDataReq Queue
+ */
 void sendDataReq(int frame_index);
 
+
+/**
+ * @brief   Read from the knxLinkDataCon Queue
+ */
 void recvDataCon(void);
 
+
+/**
+ * @brief   Read from the knxLinkDataInd Queue
+ */
 void recvDataInd(int frame_index);
 
 

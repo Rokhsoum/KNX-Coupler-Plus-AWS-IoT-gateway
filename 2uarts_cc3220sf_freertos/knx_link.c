@@ -104,10 +104,12 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
 
     /**
      * @TODO
-     * Crear colas knxLinkDataCon, knxLinkDataInd
+     * Crear colas knxLinkDataReq, knxLinkDataCon, knxLinkDataInd
      * Crear semáforo knxLinkDataSem
      * Si error, while(1);
      */
+
+    knxLinkParams.knxLinkDataReq = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(int));
 
     knxLinkParams.knxLinkDataCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(knxLinkDataCon_t));
 
@@ -153,6 +155,7 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
        knxLinkParams.ga = KNX_GA_ADDRESS;
 
        knxLinkFramePoolInit();
+
 
        return UART_STATUS_SUCCESS;
 }
@@ -251,8 +254,6 @@ uint8_t knxLinkResetCon(knxLinkHandle_t *link) {
 
 int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index) {
 	// Variables locales que nos harán falta:
-    uint16_t ia = 0;
-    char buffer[1] = {ia};
     int k = 0;
     int len = KNX_LINK_STD_FRAME_MAX;
     uint8_t encoded_frame[len];
@@ -274,7 +275,7 @@ int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index) {
 
             if (knxLinkGetState(link) != KNX_LINK_NORMAL_STATE) {
 
-                if (buffer != 0) {
+                if (knxLinkParams.ia != 0) {
 
                     int i = 0;
                     knxLinkPoolAppYieldLock(i);
@@ -303,6 +304,7 @@ int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index) {
 
 knxLinkDataCon_t knxLinkSendDataCon(knxLinkHandle_t *link) {
 
+    knxLinkDataCon_t con;
     if (knxLinkDataReq(link, knxLinkDataParams.frame_index) == 1) {
         knxLinkDataParams.confirmation = KNX_LINK_DATA_CON_POS;
     }
@@ -313,10 +315,9 @@ knxLinkDataCon_t knxLinkSendDataCon(knxLinkHandle_t *link) {
         knxLinkDataParams.confirmation = KNX_LINK_DATA_CON_ERROR;
     }
 
-    xQueueSend(knxLinkParams.knxLinkDataCon, &knxLinkDataParams.confirmation, portMAX_DELAY);
-    xQueueSend(knxLinkParams.knxLinkDataCon, &knxLinkDataParams.frame_index, portMAX_DELAY);
+    xQueueSend(knxLinkParams.knxLinkDataCon, &con, portMAX_DELAY);
 
-    return knxLinkDataParams;
+    return con;
 }
 
 
@@ -340,17 +341,17 @@ static void _knxLinkRecvThread(void *arg0) {
     uint8_t length = 0;
     uint8_t CHK = 0;
     int len = KNX_LINK_STD_FRAME_MAX;
-    char frame[len];
+    uint8_t frame[len];
     uint8_t FT[1];
     uint8_t saH[1];
     uint8_t saL[1];
     uint8_t daH[1];
     uint8_t daL[1];
     uint8_t LG[len-1];
-    uint8_t *buffer;
+    uint8_t buffer;
     char L_Data_Confirm = 0;
     int i, frame_index;
-    knxLinkDataCon_t conf;
+    knxLinkDataCon_t con;
 
     while(1) {
         knxLinkAdapterReadChar(knxLinkParams.uartKNX);
@@ -456,25 +457,26 @@ static void _knxLinkRecvThread(void *arg0) {
                 break;
 
             case E_CHK:
-                CHK = knxLinkCalcCHK(buffer, 1);
-                knxLinkVerifyCHK(buffer, 1, CHK);
+                CHK = knxLinkCalcCHK(frame, 1);
+                knxLinkVerifyCHK(frame, 1, CHK);
 
-                if (knxLinkVerifyCHK(buffer, 1, CHK) == 1) {
+                if (knxLinkVerifyCHK(frame, 1, CHK) == 1) {
                     if ((daH[1] + daL[1]) == knxLinkParams.ia) {
-                        xQueueSend(knxLinkParams.knxLinkDataCon, &conf, portMAX_DELAY);
+                        xQueueSend(knxLinkParams.knxLinkDataCon, &con, portMAX_DELAY);
                     }
                     else {
                         xQueueSend(knxLinkParams.knxLinkDataInd, &frame_index, portMAX_DELAY);
                     }
                 }
+                knxLinkDecodeFrame(frame, buffer, sizeof(uint8_t));
                 link->stateR = E_DATA_CONF;
                 break;
 
             case E_DATA_CONF:
                 L_Data_Confirm = knxLinkAdapterReadChar(knxLinkParams.uartKNX);
-                knxLinkVerifyCHK(buffer, 1, CHK);
+                knxLinkVerifyCHK(frame, 1, CHK);
 
-                if (knxLinkVerifyCHK(buffer, 1, CHK) == 1) {
+                if (knxLinkVerifyCHK(frame, 1, CHK) == 1) {
                     L_Data_Confirm = TPUART_RESPONSE_DATA_CONFIRMATION_POS;
                 }
                 else {
@@ -502,11 +504,12 @@ static void _knxLinkTxThread(void *arg0) {
     char txBuffer[1] = {encoded_frame[1]};
 
     while(1) {
+
 	xQueueReceive(knxLinkParams.knxLinkDataReq, &frame_index, portMAX_DELAY);
 
     knxLinkEncodeFrame(frame, encoded_frame, sizeof(encoded_frame));
 
-    knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, txBuffer, 1);
+    knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, txBuffer, sizeof(txBuffer));
 
     }
 }

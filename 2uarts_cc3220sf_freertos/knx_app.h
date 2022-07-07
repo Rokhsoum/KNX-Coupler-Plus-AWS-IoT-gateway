@@ -32,12 +32,14 @@ struct knxAppParams_s * knxAppInit(void);
 
 /**
  * @brief   Callback function of the button SW2
+ * Al pulsar el botón SW2, inyecta datos en la cola buttonsQueue
  */
 void ButtonLeftCallback(Button_Handle buttonLeft, Button_EventMask buttonEvents);
 
 
 /**
  * @brief   Callback function of the button SW3
+ * Al pulsar el botón SW3, inyecta datos en la cola buttonsQueue
  */
 void ButtonRightCallback(Button_Handle buttonHandle, Button_EventMask buttonEvents);
 

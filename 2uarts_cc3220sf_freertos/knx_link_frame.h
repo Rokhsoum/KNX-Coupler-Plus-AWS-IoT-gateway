@@ -47,17 +47,17 @@
  * This is the datatype used in the frame pool repository
  */
 typedef struct {
-    uint8_t rep;        /**< Repeated frame in the pool (0 = yes, 1 = no) */
-    uint8_t prio;       /**< Frame priority to ordinate them in the pool */
-    uint16_t sa;        /**< Source address (16-bit Individual address) */
-    uint16_t da;        /**< Destination address (16-bit Individual address / 15-bit group address) */
-    uint8_t at;         /**< Type of Destination address (0 = individual, 1 = group) */
-    uint8_t hop_count;  /**< Hop count : used to limit breaks between lines (default: 7),
-						decreased each time a coupler forwards the frame */
-    uint8_t ext_ff;     /**< Ext. frame format (for EXT frames only),
-                        unused (default: 0) */
-    uint16_t length;    /**< LSDU length */
-    uint8_t lsdu;       /**< Link Service Data Unit */
+    uint8_t rep;                                        /**< Repeated frame in the pool (0 = yes, 1 = no) */
+    uint8_t prio;                                       /**< Frame priority to ordinate them in the pool */
+    uint16_t sa;                                        /**< Source address (16-bit Individual address) */
+    uint16_t da;                                        /**< Destination address (16-bit Individual address / 15-bit group address) */
+    uint8_t at;                                         /**< Type of Destination address (0 = individual, 1 = group) */
+    uint8_t hop_count;                                  /**< Hop count : used to limit breaks between lines (default: 7),
+						                                decreased each time a coupler forwards the frame */
+    uint8_t ext_ff;                                     /**< Ext. frame format (for EXT frames only),
+                                                        unused (default: 0) */
+    uint16_t length;                                    /**< LSDU length */
+    uint8_t lsdu[KNX_LINK_EXT_FRAME_LSDU_MAX];          /**< Link Service Data Unit */
 } knxLinkFrame_t;
 
 

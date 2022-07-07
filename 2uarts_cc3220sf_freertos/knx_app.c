@@ -26,12 +26,12 @@
  * Tipo estructurado con todos los parámetros del nivel de application
  */
 typedef struct knxAppParams_s {
-    uint16_t device_ia;
-    ga_set_type gas_boton_0, gas_boton_1;
-    ga_set_type gas_led_verde, gas_led_amarillo;
-    QueueHandle_t buttonsKNXQueue;
-    QueueHandle_t ledGreenKNXQueue;
-    QueueHandle_t ledYellowKNXQueue;
+    uint16_t device_ia;                             /**< Dirección individual del dispositivo */
+    ga_set_type gas_boton_0, gas_boton_1;           /**< Dirección del grupo de butons 0 y 1 */
+    ga_set_type gas_led_verde, gas_led_amarillo;    /**< Dirección del grupo de LEDs verde y amarillo */
+    QueueHandle_t buttonsKNXQueue;                  /**< Cola buttons (datos buttonMessageItem_t) */
+    QueueHandle_t ledGreenKNXQueue;                 /**< Cola ledVerde (uint8_t buttonValue) */
+    QueueHandle_t ledYellowKNXQueue;                /**< Cola ledAmarillo (uint8_t buttonValue) */
 } knxAppParams_t;
 
 
@@ -39,8 +39,8 @@ typedef struct knxAppParams_s {
  * Tipo estructurado con todos los parámetros del button
  */
 typedef struct {
-    uint8_t buttonID;
-    uint8_t buttonValue;
+    uint8_t buttonID;               /**< Indica  el  botón */
+    uint8_t buttonValue;            /**< El valor del botón (siempre igual a 1) */
 } buttonMessageItem_t;
 
 
@@ -72,7 +72,6 @@ static void _ledYellowAppThread(void *arg0);
 /**
  * Variable privada con todos los parámetros del boton
  */
-
 static buttonMessageItem_t buttonInf;
 
 
@@ -117,7 +116,11 @@ struct knxAppParams_s * knxAppInit(void) {
 
     knxLinkSetAddressReq(link, knxAppParams.device_ia);
 
-    knxAppParams.buttonsKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, 1);
+    knxAppParams.buttonsKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, sizeof(buttonMessageItem_t));
+
+    knxAppParams.ledGreenKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, 1);
+
+    knxAppParams.ledYellowKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, 1);
 
 
     TaskHandle_t knxAppThreadHandle = NULL;
@@ -165,8 +168,7 @@ void _knxAppThread(void *arg0) {
     knxLinkHandle_t     *link;
     int i;
 
-    xQueueReceive(knxAppParams.buttonsKNXQueue, &buttonInf.buttonID, portMAX_DELAY);
-    xQueueReceive(knxAppParams.buttonsKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
+    xQueueReceive(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
 
     for (i = 0; i < knxAppParams.gas_boton_0.used-1; i++) {
         slots[i] = knxLinkPoolAppLock();
@@ -182,8 +184,8 @@ void _knxAppThread(void *arg0) {
             frame->at = 1;
             frame->hop_count = 7;
             frame->ext_ff = 0;
-            //frame->length = knxAppParams.device_ia;
-            //frame->lsdu = knxAppParams.device_ia;
+            frame->length = sizeof(frame->lsdu);
+            //frame->lsdu[KNX_LINK_EXT_FRAME_LSDU_MAX] = ;
         }
     }
 
@@ -219,8 +221,8 @@ void _knxAppThread(void *arg0) {
             frame->at = 1;
             frame->hop_count = 7;
             frame->ext_ff = 0;
-            //frames->length = knxAppParams.device_ia;
-            //frames->lsdu = knxAppParams.device_ia;
+            frame->length = sizeof(frame->lsdu);
+            //frame->lsdu[KNX_LINK_EXT_FRAME_LSDU_MAX] = ;
         }
     }
 

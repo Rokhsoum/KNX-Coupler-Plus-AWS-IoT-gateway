@@ -63,6 +63,7 @@ int knxLinkFramePoolLock(knxLinkFramePoolUser_t flag) {
     return res;
 }
 
+
 int knxLinkPoolAppLock(void) {
     int i, res = -1;
 
@@ -74,9 +75,9 @@ int knxLinkPoolAppLock(void) {
             res = -1;
         }
     }
-
     return res;
 }
+
 
 int knxLinkPoolLinkLock(void) {
     int i, res;
@@ -141,6 +142,7 @@ void knxLinkFramePoolUnlock(int i, knxLinkFramePoolUser_t flag) {
         xSemaphoreGive(knxLinkFramePool.mutex);
     }
 }
+
 
 void knxLinkPoolAppUnLock(int i) {
     knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_APP;

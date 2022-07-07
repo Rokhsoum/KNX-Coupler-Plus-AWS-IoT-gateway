@@ -42,7 +42,7 @@ void knxLinkFramePoolInit(void);
  * @return -1 if error, slot index otherwise
  * The reserved frame slot is marked with the value flag; further operations
  * on the reserved frame must match this value;
- * eg. a sot locked with KNX_LINK_POOL_FLAG_APP can only be unlocked with this same flag value.
+ * eg. a slot locked with KNX_LINK_POOL_FLAG_APP can only be unlocked with this same flag value.
  * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
  * the request is invalid.
  */
@@ -71,13 +71,6 @@ int knxLinkPoolLinkLock(void);
  */
 void knxLinkPoolYieldLock(int i);
 
-/**
- * @brief Send frame to the application or a confirmation
- * @param[in] i Slot index returned by knxLinkAppLock()
- * If it's a remote frame, i is sent to kncLinkDataInd;
- * otherwise, i and a confirmation (positive or negative) are sent to knxLinkDataCon
- */
-void knxLinkPoolLinkYieldLock(int i);
 
 /**
  * @brief Reserve a frame slot for the link level

@@ -98,9 +98,9 @@ static int _knxLinkEncodeAsExtFrame(knxLinkFrame_t *frame, uint8_t *buffer, unsi
 
     knxLinkEncodeAddress(highDA, lowDA);
 
-    uint8_t lg = 0;
+    //uint8_t lg = 0;
 
-    knxLinkEncodeAtLsduLg(at, hop_count, lg); //vérifier
+    //knxLinkEncodeAtLsduLg(at, hop_count, lg); //vérifier
 
     res = sizeof(_knxLinkEncodeAsExtFrame);
     if (res != sizeof(_knxLinkEncodeAsExtFrame)) {

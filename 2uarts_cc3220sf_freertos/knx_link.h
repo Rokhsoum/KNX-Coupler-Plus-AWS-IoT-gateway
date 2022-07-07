@@ -8,6 +8,11 @@
 
 #include <stdint.h>
 
+#define US_STACK_DEPTH              200         //Number of words to allocate for use as the task's stack.
+
+#define KNX_LINK_QUEUE_LENGTH       10          //Number of units that a queue can handle
+
+
 struct knxLinkHandle_s;
 
 /**
@@ -28,8 +33,6 @@ int knxLinkSetAddressReq(struct knxLinkHandle_s *link, uint16_t ia);
 
 
 // ___---=== Reset service ===---___
-
-#define KNX_LINK_QUEUE_LENGTH    10             //Number of units that a queue can handle
 
 
 #define KNX_LINK_RESET_CON_NEG   0       		// Negative confirmation value for the reset service
@@ -59,8 +62,6 @@ uint8_t knxLinkResetCon(struct knxLinkHandle_s *link);
 #define KNX_LINK_DATA_CON_POS   1       		// Positive confirmation value for the data service
 #define KNX_LINK_DATA_CON_ERROR ((uint8_t)-1)	// Confirmation error value for the data service
 
-//#define portMAX_DELAY           10      //The maximum amount of time the task should block waiting for space,
-                                        //to become available on the queue, should it already be full.
 
 /**
  * @brief Datatype for the data confirmation primitive
@@ -97,20 +98,6 @@ knxLinkDataCon_t knxLinkSendDataCon(struct knxLinkHandle_s *link);
  * @return -1 if error, frame index in pool otherwise
  */
 int knxLinkDataInd(struct knxLinkHandle_s *link);
-
-/**
- * @brief Reception task, manage incoming data from TP-UART
- */
-//void *_knxLinkRxThread(void *arg0);
-
-
-/**
- * @brief Transmission task, manage requests from upper level
- */
-//void *_knxLinkTxThread(void *arg0);
-
-
-#define US_STACK_DEPTH  200 //Number of words to allocate for use as the task's stack.
 
 
 /**

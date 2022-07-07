@@ -17,7 +17,7 @@
 
 
 /**
- *  Macro for link uart channel
+ *  Macro to define link uart channel
  */
 #define KNX_LINK_ADAPTER_UPLINK            0
 #define KNX_LINK_ADAPTER_DOWNLINK          1
@@ -40,6 +40,7 @@
  *  @brief      A handle that is returned from a knxLinkAdapterOpen() call.
  */
 typedef UART_Handle knxLink_uart_t;
+
 
 /**
  *  @brief  Function to open a given UART peripheral
