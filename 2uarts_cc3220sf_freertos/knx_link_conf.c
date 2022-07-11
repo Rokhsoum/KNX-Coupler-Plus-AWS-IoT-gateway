@@ -7,19 +7,19 @@
 #include "knx_link_internal.h"
 
 
-knxLinkHandle_t     *link;
+//knxLinkHandle_t *link;
 knxLinkDataCon_t    conf;
 
 
-void sendDataReq(int frame_index) {
+void sendDataReq(knxLinkHandle_t *link, int *frame_index) {
     xQueueSend(link->knxLinkDataReq, &frame_index, portMAX_DELAY);
 }
 
 
-void recvDataCon(void) {
+void recvDataCon(knxLinkHandle_t *link) {
     xQueueReceive(link->knxLinkDataCon, &conf, portMAX_DELAY);
 }
 
-void recvDataInd(int frame_index) {
+void recvDataInd(knxLinkHandle_t *link, int *frame_index) {
     xQueueReceive(link->knxLinkDataInd, &frame_index, portMAX_DELAY);
 }

@@ -6,6 +6,7 @@
 #include <task.h>
 #include <stdint.h>
 #include "knx_app.h"
+#include "app.h"
 #include "knx_link.h"
 #include "knx_link_internal.h"
 #include "knx_commissioning_data.h"
@@ -13,13 +14,15 @@
 #include "knx_link_gadd_pool.h"
 #include "knx_link_frame.h"
 #include "knx_link_frame_pool.h"
+
+/* Driver configuration */
+#include "ti_drivers_config.h"
+
+/* Driver Header files */
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/UART.h>
 #include <ti/drivers/apps/Button.h>
 #include <ti/drivers/apps/LED.h>
-
-/* Driver configuration */
-#include "ti_drivers_config.h"
 
 
 /**
@@ -27,6 +30,8 @@
  */
 typedef struct knxAppParams_s {
     uint16_t device_ia;                             /**< Dirección individual del dispositivo */
+    knxLinkHandle_t *uplink;                        /**< upLink */
+    knxLinkHandle_t *downlink;                      /**< downLink */
     ga_set_type gas_boton_0, gas_boton_1;           /**< Dirección del grupo de butons 0 y 1 */
     ga_set_type gas_led_verde, gas_led_amarillo;    /**< Dirección del grupo de LEDs verde y amarillo */
     QueueHandle_t buttonsKNXQueue;                  /**< Cola buttons (datos buttonMessageItem_t) */
@@ -35,13 +40,10 @@ typedef struct knxAppParams_s {
 } knxAppParams_t;
 
 
-/**
- * Tipo estructurado con todos los parámetros del button
- */
 typedef struct {
-    uint8_t buttonID;               /**< Indica  el  botón */
-    uint8_t buttonValue;            /**< El valor del botón (siempre igual a 1) */
-} buttonMessageItem_t;
+    knxLinkHandle_t *fromlink;
+    knxLinkHandle_t *tolink;
+} knxAppCouplerThreadArg_t;
 
 
 /**
@@ -49,25 +51,11 @@ typedef struct {
  */
 static knxAppParams_t knxAppParams;
 
-/**
- * @brief   Manage button notifications for sending KNX telegrams
- */
-static void _knxAppThread(void *arg0);
 
 /**
  * @brief   Manage incoming KNX telegrams to change the status of LEDs
  */
 static void _knxAppRecvThread(void *arg0);
-
-/**
- * @brief   Extracts a value from the ledGreenQUEUE queue and switches the output value of the green LED
- */
-static void _ledGreenAppThread(void *arg0);
-
-/**
- * @brief   Extracts a value from the ledYellowQUEUE queue and switches the output value of the yellow LED
- */
-static void _ledYellowAppThread(void *arg0);
 
 /**
  * Variable privada con todos los parámetros del boton
@@ -82,9 +70,10 @@ static buttonMessageItem_t buttonInf;
 // ............................................................................
 
 
-struct knxAppParams_s * knxAppInit(void) {
+struct knxAppParams_s * knxAppInit(uint16_t ia, knxLinkHandle_t *uplink, knxLinkHandle_t *downlink) {
     int i;
-    knxAppParams.device_ia = 0;
+    knxAppParams.device_ia = ia;
+    knxAppCouplerThreadArg_t couplerargs;
 
     ga_set_init(&knxAppParams.gas_boton_0, ARRAY_SIZE(GA_SET_BOTON_0));
     for (i = 0; i < ARRAY_SIZE(GA_SET_BOTON_0)-1; i++) {
@@ -106,7 +95,7 @@ struct knxAppParams_s * knxAppInit(void) {
         ga_set_add(&knxAppParams.gas_led_amarillo, GA_SET_LED_1[i]);
     }
 
-    knxLinkHandle_t *link = NULL;
+#if 0
     knxLinkResetReq(link);
     if (knxLinkResetReq(link) != 1) {
         knxLinkResetReq(link);
@@ -114,31 +103,26 @@ struct knxAppParams_s * knxAppInit(void) {
         knxLinkResetReq(link);
     }
 
+
+    for (i = 0; i < 3; i++) {
+
+    }
+#endif
+
     knxLinkSetAddressReq(link, knxAppParams.device_ia);
+
+    couplerargs.fromlink = uplink;
+    couplerargs.tolink = downlink;
+    TaskHandle_t knxAppRecvThreadHandle = NULL;
+    xTaskCreate(_knxAppRecvThread, "knxAppRecvThread1", US_STACK_DEPTH, (void*) &couplerargs, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
+
+    couplerargs.fromlink = downlink;
+    couplerargs.tolink = uplink;
+    xTaskCreate(_knxAppRecvThread, "knxAppRecvThread2", US_STACK_DEPTH, (void*) &couplerargs, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
 
     knxAppParams.buttonsKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, sizeof(buttonMessageItem_t));
 
-    knxAppParams.ledGreenKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, 1);
-
-    knxAppParams.ledYellowKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, 1);
-
-
-    TaskHandle_t knxAppThreadHandle = NULL;
-    xTaskCreate(_knxAppThread, "knxAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppThreadHandle);
-
-
-    TaskHandle_t knxAppRecvThreadHandle = NULL;
-    xTaskCreate(_knxAppRecvThread, "knxAppRecvThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
-
-
-    TaskHandle_t ledGreenAppThreadHandle = NULL;
-    xTaskCreate(_ledGreenAppThread, "ledGreenAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledGreenAppThreadHandle);
-
-
-    TaskHandle_t ledYellowAppThreadHandle = NULL;
-    xTaskCreate(_ledYellowAppThread, "ledYellowAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledYellowAppThreadHandle);
-
-    return UART_STATUS_SUCCESS;;
+    return &knxAppParams;
 }
 
 
@@ -146,8 +130,9 @@ void ButtonLeftCallback(Button_Handle buttonLeft, Button_EventMask buttonEvents)
 
     buttonInf.buttonID = CONFIG_BUTTON_0;
     buttonInf.buttonValue = 1;
+
     if (buttonEvents & Button_EV_CLICKED) {
-    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
+        xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
     }
 }
 
@@ -155,8 +140,9 @@ void ButtonRightCallback(Button_Handle buttonRight, Button_EventMask buttonEvent
 
     buttonInf.buttonID = CONFIG_BUTTON_1;
     buttonInf.buttonValue = 1;
+
     if (buttonEvents & Button_EV_CLICKED) {
-    xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
+        xQueueSend(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
     }
 }
 
@@ -165,7 +151,6 @@ void _knxAppThread(void *arg0) {
     uint8_t             slots[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frame;
-    knxLinkHandle_t     *link;
     int i;
 
     xQueueReceive(knxAppParams.buttonsKNXQueue, &buttonInf, portMAX_DELAY);
@@ -191,7 +176,8 @@ void _knxAppThread(void *arg0) {
 
     for (i = 0; i < knxAppParams.gas_boton_0.used-1; i++) {
         if (frames[i] != NULL) {
-            knxLinkDataReq(link, slots[i]);
+            knxLinkDataReq(knxAppParams.uplink, slots[i]);
+            knxLinkDataReq(knxAppParams.downlink, slots[i]);
         }
     }
 
@@ -228,7 +214,8 @@ void _knxAppThread(void *arg0) {
 
     for (i = 0; i < knxAppParams.gas_boton_1.used-1; i++) {
         if (frames[i] != NULL) {
-            knxLinkDataReq(link, slots[i]);
+            knxLinkDataReq(knxAppParams.uplink, slots[i]);
+            knxLinkDataReq(knxAppParams.downlink, slots[i]);
         }
     }
 
@@ -245,12 +232,16 @@ void _knxAppThread(void *arg0) {
 
 
 void _knxAppRecvThread(void *arg0) {
-    int i =0 ;
+    int i = 0 ;
     knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frame;
+    knxAppCouplerThreadArg_t *ActuAlArg = (knxAppCouplerThreadArg_t *)arg0;
 
-    recvDataInd(i);
+    recvDataInd(ActuAlArg->fromlink, &i);
+    // Forward message to tolink
+    //wait for confirmation
 
+    /**
     for (i = 0; i < knxAppParams.gas_led_verde.used-1; i++) {
         if (frames[i] != NULL) {
             frame->da = knxAppParams.gas_led_verde.ga_set[i];
@@ -269,37 +260,10 @@ void _knxAppRecvThread(void *arg0) {
                 xQueueReceive(knxAppParams.ledYellowKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
             }
         }
-    }
+    }*/
 }
 
 
-void _ledGreenAppThread(void *arg0) {
-    xQueueReceive(knxAppParams.ledGreenKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
-
-    LED_Params ledParams;
-    LED_Handle ledGreen;
-
-    LED_Params_init(&ledParams);
-
-    ledGreen = LED_open(CONFIG_LED_1, &ledParams);
-
-    LED_toggle(ledGreen);
-}
-
-void _ledYellowAppThread(void *arg0) {
-    xQueueReceive(knxAppParams.ledGreenKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
-
-
-    LED_Params ledParams;
-    LED_Handle ledYellow;
-
-    LED_Params_init(&ledParams);
-
-    ledYellow = LED_open(CONFIG_LED_2, &ledParams);
-
-    LED_toggle(ledYellow);
-
-}
 
 
 

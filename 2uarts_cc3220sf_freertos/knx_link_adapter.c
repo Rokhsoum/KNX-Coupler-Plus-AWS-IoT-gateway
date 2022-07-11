@@ -23,7 +23,7 @@ knxLink_uart_t knxLinkAdapterOpen(int channel, int baudRate, int parityType) {
     params.writeMode = UART_MODE_BLOCKING;
     params.readMode = UART_MODE_BLOCKING;
     params.baudRate = (baudRate == KNX_LINK_ADAPTER_BPS_9600? 9600 : 19200);
-    params.parityType = (parityType == KNX_LINK_ADAPTER_PARITY_NONE? KNX_LINK_ADAPTER_PARITY_NONE : KNX_LINK_ADAPTER_PARITY_EVEN);
+    params.parityType = (parityType == KNX_LINK_ADAPTER_PARITY_NONE? UART_PAR_NONE : UART_PAR_EVEN);
 
     if (baudRate == KNX_LINK_ADAPTER_BPS_9600 || parityType == KNX_LINK_ADAPTER_PARITY_EVEN) {
         channel = KNX_LINK_ADAPTER_UPLINK;

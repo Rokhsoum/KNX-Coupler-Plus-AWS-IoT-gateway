@@ -26,11 +26,11 @@ typedef struct knxLinkHandle_s {
     QueueHandle_t knxLinkDataReq;       /**< Cola request datos (int frame_index) */
     QueueHandle_t knxLinkDataCon;       /**< Cola confirmación datos (datos knxLinkDataCon_t) */
     QueueHandle_t knxLinkDataInd;       /**< Cola indicación datos (uint8_t, valor frame_index) */
-    SemaphoreHandle_t knxLinkDataSem;   /**< Semáforo para data request */
+    //SemaphoreHandle_t knxLinkDataSem;   /**< Semáforo para data request */
     /* Resto de parámetros del nivel de enlace */
     uint16_t ia;                        /**< Dirección individual del dispositivo */
-    uint16_t ga;                        /**< Dirección de grupo relevante para un objeto de comunicación*/
-    uint16_t da;                        /**< Dirección individual del destination */
+    //uint16_t ga;                        /**< Dirección de grupo relevante para un objeto de comunicación*/
+    //uint16_t da;                        /**< Dirección individual del destination */
     int state;                          /**< Estado del nivel de enlace */
     int stateR;                         /**< Estado de la recepción de datos */
     uint8_t txSlot;                     /**< Índice del telegrama en el pool, transmisión (conservar de data request para data confirmation) */

@@ -44,7 +44,8 @@
 /**
  * Variable privada con todos los parámetros del nivel de enlace
  */
-static knxLinkHandle_t knxLinkParams;
+static knxLinkHandle_t knxLinkParams[knxLink_handleused][2];
+static int knxLink_handleused = 0;
 
 /**
  * Variable privada con todos los parámetros del data confirmation
@@ -61,6 +62,11 @@ static void _knxLinkRecvThread(void *arg0);
  */
 static void _knxLinkTxThread(void *arg0);
 
+/**
+ * @brief Data request task, (do requests from upper level:changer)
+ */
+static void knxLinkDataReqThread(void *arg0);
+
 
 // ............................................................................
 // ============================================================================
@@ -69,11 +75,14 @@ static void _knxLinkTxThread(void *arg0);
 // ............................................................................
 
 
-struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
+struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
 
+    if (knxLink_handleused >= 2 ) {
+        return NULL;
+    }
 	// Resto del código ...
 
-    knxLinkParams.uartKNX = knxLinkAdapterOpen(link, bps, parity);
+    knxLinkParams[knxLink_handleused].uartKNX = uartlink;
     /**
      * @TODO
      * Inicializar mutex uartKNXMutex.
@@ -81,7 +90,7 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
      */
 
     int res;
-    res = pthread_mutex_init(&knxLinkParams.uartKNXMutex, NULL);
+    res = pthread_mutex_init(&knxLinkParams[knxLink_handleused][knxLink_handleused].uartKNXMutex, NULL);
 
     if (res != NULL) {
            while(1);
@@ -95,10 +104,10 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
      * Si error, while(1);
      */
 
-    knxLinkParams.knxLinkResetCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, 1);
+    knxLinkParams[knxLink_handleused].knxLinkResetCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, 1);
 
-    knxLinkParams.knxLinkResetSem = xSemaphoreCreateBinary();
-    if (knxLinkParams.knxLinkResetSem == NULL) {
+    knxLinkParams[knxLink_handleused].knxLinkResetSem = xSemaphoreCreateBinary();
+    if (knxLinkParams[knxLink_handleused].knxLinkResetSem == NULL) {
         while(1);
     }
 
@@ -109,20 +118,17 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
      * Si error, while(1);
      */
 
-    knxLinkParams.knxLinkDataReq = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(int));
+    knxLinkParams[knxLink_handleused].knxLinkDataReq = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(int));
 
-    knxLinkParams.knxLinkDataCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(knxLinkDataCon_t));
+    knxLinkParams[knxLink_handleused].knxLinkDataCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(knxLinkDataCon_t));
 
-    knxLinkParams.knxLinkDataInd = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(int));
+    knxLinkParams[knxLink_handleused].knxLinkDataInd = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(int));
 
-    knxLinkParams.knxLinkDataSem = xSemaphoreCreateBinary();
-       if (knxLinkParams.knxLinkDataSem == NULL) {
-           while(1);
-           }
 
+    //create a thread to reform the dataReq queue and perfom all he tasks to send the message
     /**
      * @TODO
-     * Crear tarea knxLinkRecvThread
+     * Crear tarea knxLinkRecvThread, knxLinkDataReqThread, knxLinkTxThreadHandle
      * Si error, while(1);
      */
 
@@ -134,12 +140,20 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
            while(1);
        }
 
+       TaskHandle_t knxLinkDataReqThreadHandle = NULL;
+       BaseType_t ret1;
+       ret1 = xTaskCreate(knxLinkDataReqThread, "knxLinkDataReqThreadHandle", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkDataReqThreadHandle);
+
+       if (ret1 == pdPASS ) {
+           while(1);
+       }
+
 
        TaskHandle_t knxLinkTxThreadHandle = NULL;
-       BaseType_t ret1;
-       ret1 = xTaskCreate(_knxLinkTxThread, "knxLinkTxThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkTxThreadHandle);
+       BaseType_t ret2;
+       ret2 = xTaskCreate(_knxLinkTxThread, "knxLinkTxThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkTxThreadHandle);
 
-       if ( ret1 == pdPASS ) {
+       if (ret2 == pdPASS ) {
            while(1);
        }
 
@@ -148,16 +162,16 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
      * Inicializar parámetros nivel de enlace, pool, etc.
      */
 
-       knxLinkParams.state = KNX_LINK_INIT_STATE;
-       knxLinkParams.stateR = E_CTRL;
-       knxLinkParams.ia = KNX_IA_ADDRESS;
-       knxLinkParams.da = KNX_DA_ADDRESS;
-       knxLinkParams.ga = KNX_GA_ADDRESS;
+       knxLinkParams[knxLink_handleused].state = KNX_LINK_INIT_STATE;
+       knxLinkParams[knxLink_handleused].stateR = E_CTRL;
+       knxLinkParams[knxLink_handleused].ia = KNX_IA_ADDRESS;
+       //knxLinkParams[knxLink_handleused].da = KNX_DA_ADDRESS;
+       //knxLinkParams[knxLink_handleused].ga = KNX_GA_ADDRESS;
 
        knxLinkFramePoolInit();
 
 
-       return UART_STATUS_SUCCESS;
+       return &knxLinkParams[knxLink_handleused++];
 }
 
 
@@ -166,9 +180,7 @@ struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity) {
 
 int knxLinkSetAddressReq(knxLinkHandle_t *link, uint16_t ia) {
 	// Variables locales que nos harán falta:
-    uint8_t ctrl = 0;
-    char buf[1] = {TPUART_CTRLFIELD_SET_ADDRESS};
-    char buffer[2] = {ctrl, ia};
+    char buf[3] = {TPUART_CTRLFIELD_SET_ADDRESS, 0, 0};
 
     /**
      * @TODO
@@ -179,12 +191,16 @@ int knxLinkSetAddressReq(knxLinkHandle_t *link, uint16_t ia) {
 
 	// Resto del código ...
 
-        pthread_mutex_lock(&knxLinkParams.uartKNXMutex);
+        pthread_mutex_lock(&knxLinkParams[knxLink_handleused].uartKNXMutex);
 
-        knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, buf, 1);
-        knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, buffer, 2);
+        buf[0] = (uint8_t)((ia & 0xFF00) >> 8);
+        buf[1] = (uint8_t)(ia & 0x00FF);
+        knxLinkAdapterWriteBuffer(knxLinkParams[knxLink_handleused].uartKNX, buf, 3);
 
-        pthread_mutex_unlock(&knxLinkParams.uartKNXMutex);
+        pthread_mutex_unlock(&knxLinkParams[knxLink_handleused].uartKNXMutex);
+    }
+    else {
+        return 0;
     }
 
     return 1;
@@ -196,33 +212,32 @@ int knxLinkSetAddressReq(knxLinkHandle_t *link, uint16_t ia) {
 
 int knxLinkResetReq(knxLinkHandle_t *link) {
 	// Variables locales que nos harán falta:
-    uint8_t ctrl = 0;
     char buf[1] = {TPUART_CTRLFIELD_RESET_REQUEST};
-    char buffer[1] = {ctrl};
-    //à transmetre: ctrl seulement
+
 
     /**
      * @TODO
      * Implementar primitiva request del servicio reset
      * Hacerlo sólo si el estado del nivel de enlace es KNX_LINK_INIT_STATE
      */
+    if (knxLinkParams[knxLink_handleused].knxLinkResetSem == NULL && knxLinkGetState(link) != KNX_LINK_INIT_STATE) {
+        return 0;
+    }
 
-    if (knxLinkParams.knxLinkResetSem != NULL) {
-        if( xSemaphoreTake(knxLinkParams.knxLinkResetSem, portMAX_DELAY ) == pdTRUE ) {
+    if (knxLinkParams[knxLink_handleused].knxLinkResetSem != NULL) {
+        if( xSemaphoreTake(knxLinkParams[knxLink_handleused].knxLinkResetSem, portMAX_DELAY ) == pdTRUE ) {
 
             if (knxLinkGetState(link) == KNX_LINK_INIT_STATE) {
 
                 // Resto del código ...
 
-                pthread_mutex_lock(&knxLinkParams.uartKNXMutex);
+                pthread_mutex_lock(&knxLinkParams[knxLink_handleused].uartKNXMutex);
 
-                knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, buf, 1);
-                knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, buffer, 1);
+                knxLinkAdapterWriteBuffer(knxLinkParams[knxLink_handleused].uartKNX, buf, 1);
 
-                pthread_mutex_unlock(&knxLinkParams.uartKNXMutex);
+                pthread_mutex_unlock(&knxLinkParams[knxLink_handleused].uartKNXMutex);
 
-                xSemaphoreGive(knxLinkParams.knxLinkResetSem);
-
+                //xSemaphoreGive(knxLinkParams[knxLink_handleused].knxLinkResetSem); on le give aprés dans RecvThread
             }
         }
 
@@ -234,7 +249,7 @@ int knxLinkResetReq(knxLinkHandle_t *link) {
 uint8_t knxLinkResetCon(knxLinkHandle_t *link) {
 
     uint8_t con = 0;
-
+/**
     if (knxLinkResetReq(link) == 1) {
         con = KNX_LINK_RESET_CON_POS;
     }
@@ -244,20 +259,21 @@ uint8_t knxLinkResetCon(knxLinkHandle_t *link) {
     else {
         con = KNX_LINK_RESET_CON_ERROR;
     }
-
-    xQueueSend(knxLinkParams.knxLinkResetCon, &con, portMAX_DELAY );
+*/
+    xQueueSend(link->knxLinkResetCon, &con, portMAX_DELAY );
 
     return con;
 }
 
 // ___---=== Definiciones relacionadas con el servicio de datos ===---___
 
-int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index) {
+static void _knxLinkDataReqThread(void *arg0) {
 	// Variables locales que nos harán falta:
     int k = 0;
     int len = KNX_LINK_STD_FRAME_MAX;
     uint8_t encoded_frame[len];
     char Bufftemporal[2];
+    frame_index = knxLinkFramePoolLock(KNX_LINK_FRAME_POOL_FLAG_UPLINK);
 
     /**
      * @TODO
@@ -268,36 +284,33 @@ int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index) {
      * reservado al alto nivel
      */
 
-    xQueueReceive(knxLinkParams.knxLinkDataReq, &frame_index, portMAX_DELAY);
+    xQueueReceive(knxLinkParams[knxLink_handleused].knxLinkDataReq, &frame_index, portMAX_DELAY);
 
-    if (knxLinkParams.knxLinkDataSem != NULL) {
-        if( xSemaphoreTake(knxLinkParams.knxLinkDataSem, portMAX_DELAY ) == pdTRUE ) {
+    if (knxLinkGetState(link) == KNX_LINK_NORMAL_STATE && knxLinkParams[knxLink_handleused].ia == 0) {
+        return 0;
+    }
 
-            if (knxLinkGetState(link) != KNX_LINK_NORMAL_STATE) {
+    if (knxLinkGetState(link) != KNX_LINK_NORMAL_STATE) {
 
-                if (knxLinkParams.ia != 0) {
+        if (knxLinkParams[knxLink_handleused].ia != 0) {
 
-                    int i = 0;
-                    knxLinkPoolAppYieldLock(i);
+            knxLinkPoolAppYieldLock(frame_index);
 
-                    knxLinkFrame_t frame[frame_index];
-                    knxLinkEncodeFrame(frame, encoded_frame, sizeof(encoded_frame));
+            knxLinkFrame_t frame[frame_index];
+            knxLinkEncodeFrame(frame[frame_index], encoded_frame, sizeof(encoded_frame)); //juste frame si y erreur
 
-                    pthread_mutex_lock(&knxLinkParams.uartKNXMutex);
+            pthread_mutex_lock(&knxLinkParams[knxLink_handleused].uartKNXMutex);
 
-                    for (k=0; k < len-1; k++) {
-                        Bufftemporal[0] = TPUART_CTRLFIELD_DATA_START || TPUART_CTRLFIELD_DATA_CONT(frame_index) || TPUART_CTRLFIELD_DATA_END(len);
-                        Bufftemporal[1] = encoded_frame[k];
-                        knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, Bufftemporal, 2);
-                    }
-
-                    pthread_mutex_unlock(&knxLinkParams.uartKNXMutex);
-
-                    xSemaphoreGive(knxLinkParams.knxLinkDataSem);
-                }
+            for (k=0; k < len-1; k++) {
+                Bufftemporal[0] = TPUART_CTRLFIELD_DATA_START || TPUART_CTRLFIELD_DATA_CONT(frame_index) || TPUART_CTRLFIELD_DATA_END(len);
+                Bufftemporal[1] = encoded_frame[k];
+                knxLinkAdapterWriteBuffer(knxLinkParams[knxLink_handleused].uartKNX, Bufftemporal, 2);
             }
+
+            pthread_mutex_unlock(&knxLinkParams[knxLink_handleused].uartKNXMutex);
         }
     }
+
     return 1;
 }
 
@@ -315,7 +328,7 @@ knxLinkDataCon_t knxLinkSendDataCon(knxLinkHandle_t *link) {
         knxLinkDataParams.confirmation = KNX_LINK_DATA_CON_ERROR;
     }
 
-    xQueueSend(knxLinkParams.knxLinkDataCon, &con, portMAX_DELAY);
+    xQueueSend(knxLinkParams[knxLink_handleused].knxLinkDataCon, &con, portMAX_DELAY);
 
     return con;
 }
@@ -325,7 +338,7 @@ int knxLinkDataInd(knxLinkHandle_t *link) {
 
     int frame_index = 0;
     if (knxLinkDataReq(link, frame_index) == 1) {
-        xQueueSend(knxLinkParams.knxLinkDataInd, &frame_index, portMAX_DELAY);
+        xQueueSend(knxLinkParams[knxLink_handleused].knxLinkDataInd, &frame_index, portMAX_DELAY);
         return frame_index;
     }
     else {
@@ -349,13 +362,15 @@ static void _knxLinkRecvThread(void *arg0) {
     uint8_t daL[1];
     uint8_t LG[len-1];
     uint8_t buffer;
+    uint8_t iaH = 0, iaL = 0;
     char L_Data_Confirm = 0;
-    int i, frame_index;
+    int i;
     knxLinkDataCon_t con;
+    int frame_index = knxLinkPoolLinkLock();
 
     while(1) {
-        knxLinkAdapterReadChar(knxLinkParams.uartKNX);
-        switch(knxLinkParams.state) {
+        knxLinkAdapterReadChar(knxLinkParams[knxLink_handleused].uartKNX);
+        switch(knxLinkParams[knxLink_handleused].state) {
         case KNX_LINK_INIT_STATE:
             /**
              * @TODO
@@ -370,7 +385,7 @@ static void _knxLinkRecvThread(void *arg0) {
             else {
                 reset_con = KNX_LINK_RESET_CON_NEG;
             }
-            xQueueSend(knxLinkParams.knxLinkResetCon, &reset_con, portMAX_DELAY);
+            xQueueSend(knxLinkParams[knxLink_handleused].knxLinkResetCon, &reset_con, portMAX_DELAY);
             break;
 
         case KNX_LINK_NORMAL_STATE:
@@ -445,7 +460,7 @@ static void _knxLinkRecvThread(void *arg0) {
             case E_LSDU:
                 length = sizeof(LG + 1);
                 for (i = length; i >= 0; i--) {
-                    frame[i] = knxLinkAdapterReadChar(knxLinkParams.uartKNX);
+                    frame[i] = knxLinkAdapterReadChar(knxLinkParams[knxLink_handleused].uartKNX);
                 }
 
                 if (length != 0) {
@@ -461,19 +476,23 @@ static void _knxLinkRecvThread(void *arg0) {
                 knxLinkVerifyCHK(frame, 1, CHK);
 
                 if (knxLinkVerifyCHK(frame, 1, CHK) == 1) {
-                    if ((daH[1] + daL[1]) == knxLinkParams.ia) {
-                        xQueueSend(knxLinkParams.knxLinkDataCon, &con, portMAX_DELAY);
+                    iaH = (uint8_t)((knxLinkParams[knxLink_handleused].ia & 0xFF00) >> 8);
+                    iaL = (uint8_t)(knxLinkParams[knxLink_handleused].ia & 0x00FF);
+                    if (daH[1] == iaH && daL[1] == iaL) {
+                        xQueueSend(knxLinkParams[knxLink_handleused].knxLinkDataCon, &con, portMAX_DELAY);
                     }
                     else {
-                        xQueueSend(knxLinkParams.knxLinkDataInd, &frame_index, portMAX_DELAY);
+                        frame_index = knxLinkDecodeFrame(frame, buffer, 1);
+                        xQueueSend(knxLinkParams[knxLink_handleused].knxLinkDataInd, &frame_index, portMAX_DELAY);
+                        knxLinkPoolYieldLock(frame_index);
+                        knxLinkPoolLinkLock();
                     }
                 }
-                knxLinkDecodeFrame(frame, buffer, sizeof(uint8_t));
                 link->stateR = E_DATA_CONF;
                 break;
 
             case E_DATA_CONF:
-                L_Data_Confirm = knxLinkAdapterReadChar(knxLinkParams.uartKNX);
+                L_Data_Confirm = knxLinkAdapterReadChar(knxLinkParams[knxLink_handleused].uartKNX);
                 knxLinkVerifyCHK(frame, 1, CHK);
 
                 if (knxLinkVerifyCHK(frame, 1, CHK) == 1) {
@@ -482,7 +501,7 @@ static void _knxLinkRecvThread(void *arg0) {
                 else {
                     L_Data_Confirm = TPUART_RESPONSE_DATA_CONFIRMATION_NEG;
                 }
-                knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, &L_Data_Confirm, 1);
+                knxLinkAdapterWriteBuffer(knxLinkParams[knxLink_handleused].uartKNX, &L_Data_Confirm, 1);
                 break;
 
             default:
@@ -505,11 +524,11 @@ static void _knxLinkTxThread(void *arg0) {
 
     while(1) {
 
-	xQueueReceive(knxLinkParams.knxLinkDataReq, &frame_index, portMAX_DELAY);
+	xQueueReceive(knxLinkParams[knxLink_handleused].knxLinkDataReq, &frame_index, portMAX_DELAY);
 
     knxLinkEncodeFrame(frame, encoded_frame, sizeof(encoded_frame));
 
-    knxLinkAdapterWriteBuffer(knxLinkParams.uartKNX, txBuffer, sizeof(txBuffer));
+    knxLinkAdapterWriteBuffer(knxLinkParams[knxLink_handleused].uartKNX, txBuffer, sizeof(txBuffer));
 
     }
 }

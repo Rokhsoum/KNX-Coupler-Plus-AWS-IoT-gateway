@@ -56,6 +56,7 @@
 #include "knx_link.h"
 #include "knx_app.h"
 #include "knx_link_adapter.h"
+#include "knx_link_internal.h"
 
 #define UART_CH_NAME        10
 typedef struct {
@@ -136,6 +137,8 @@ void mainThread(void *arg0)
     LED_Handle ledGreen;
     LED_Handle ledYellow;
     LED_Handle ledRed;
+    knxLinkHandle_t knxlink_handle1;
+    knxLinkHandle_t knxlink_handle2;
     size_t      bytesWritten;
 
     /* Call driver init functions */
@@ -189,8 +192,8 @@ void mainThread(void *arg0)
         while (1);
     }
 
-    create_task(uartEcho, &taskUplink_args, "upLinkTh", tskIDLE_PRIORITY);
-    create_task(uartEcho, &taskDownlink_args, "downLinkTh", tskIDLE_PRIORITY);
+    //create_task(uartEcho, &taskUplink_args, "upLinkTh", tskIDLE_PRIORITY);
+    //create_task(uartEcho, &taskDownlink_args, "downLinkTh", tskIDLE_PRIORITY);
 
 
     LED_Params_init(&ledParams);
@@ -214,9 +217,11 @@ void mainThread(void *arg0)
         while (1);
     }
 
-    knxLinkInit(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_NONE);
-
-    knxAppInit();
+    uartUplink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_NONE);
+    knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uarthandle1);
+    uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_NONE);
+    knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uarthandle2);
+    knxAppInit(MY_IA_ADDRESS, knxlink_handle1, knxlink_handle2);
 
     /* Loop forever doing nothing */
     while (1) {
