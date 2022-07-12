@@ -8,22 +8,24 @@
 #ifndef KNX_LINK_CONF_H_
 #define KNX_LINK_CONF_H_
 
+struct knxLinkHandle_s;
+
 /**
  * @brief   Write to the knxLinkDataReq Queue
  */
-void sendDataReq(int frame_index);
+void sendDataReq(struct knxLinkHandle_s *link, int *frame_index);
 
 
 /**
  * @brief   Read from the knxLinkDataCon Queue
  */
-void recvDataCon(void);
+void recvDataCon(struct knxLinkHandle_s *link);
 
 
 /**
  * @brief   Read from the knxLinkDataInd Queue
  */
-void recvDataInd(int frame_index);
+void recvDataInd(struct knxLinkHandle_s *link, int *frame_index);
 
 
 #endif /* KNX_LINK_CONF_H_ */

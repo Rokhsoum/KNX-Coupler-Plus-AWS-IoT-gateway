@@ -7,7 +7,6 @@
 #include "knx_link_internal.h"
 
 
-//knxLinkHandle_t *link;
 knxLinkDataCon_t    conf;
 
 

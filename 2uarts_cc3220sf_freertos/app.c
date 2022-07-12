@@ -5,7 +5,22 @@
  *      Author: Rokhaya Soumare
  */
 
+#include <knx_link_conf.h>
+#include "FreeRTOS.h"
+#include <stdint.h>
+#include "knx_app.h"
+#include "app.h"
+#include "knx_link.h"
+#include "knx_link_internal.h"
 
+/* Driver configuration */
+#include "ti_drivers_config.h"
+
+/* Driver Header files */
+#include <ti/drivers/GPIO.h>
+#include <ti/drivers/UART.h>
+#include <ti/drivers/apps/Button.h>
+#include <ti/drivers/apps/LED.h>
 
 /**
  * @brief   Manage button notifications for sending KNX telegrams
@@ -31,7 +46,7 @@ static buttonMessageItem_t buttonInf;
  * Tipo estructurado con todos los parámetros del application
  */
 typedef struct appParams_s {
-    QueueHandle_t buttonsQueue
+    QueueHandle_t buttonsQueue;
     QueueHandle_t ledGreenQueue;
     QueueHandle_t ledYellowQueue;
 } appParams_t;
@@ -60,7 +75,7 @@ struct appParams_s * appInit(void) {
 
 
     TaskHandle_t appThreadHandle = NULL;
-    xTaskCreate(_appThread, "appThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppThreadHandle);
+    xTaskCreate(_appThread, "appThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &appThreadHandle);
 
     TaskHandle_t ledGreenThreadHandle = NULL;
     xTaskCreate(_ledGreenThread, "ledGreenAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &ledGreenThreadHandle);

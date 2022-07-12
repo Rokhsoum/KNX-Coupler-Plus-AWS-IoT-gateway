@@ -7,6 +7,7 @@
 #define KNX_LINK_H_
 
 #include <stdint.h>
+#include "knx_link_adapter.h"
 
 #define US_STACK_DEPTH              200         //Number of words to allocate for use as the task's stack.
 
@@ -19,7 +20,7 @@ struct knxLinkHandle_s;
  * Initialize KNX link
  * @return NULL if error, pointer to allocated link handle otherwise
  */
-struct knxLinkHandle_s * knxLinkInit(int link, int bps, int parity);
+struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink);
 
 // ___---=== Set-Address service ===---___
 

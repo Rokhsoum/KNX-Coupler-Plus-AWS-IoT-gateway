@@ -1,7 +1,7 @@
 /*
  * knx_app.c
  */
-#include <knx_link_conf.h>
+
 #include "FreeRTOS.h"
 #include <task.h>
 #include <stdint.h>
@@ -14,6 +14,8 @@
 #include "knx_link_gadd_pool.h"
 #include "knx_link_frame.h"
 #include "knx_link_frame_pool.h"
+#include "knx_link_adapter.h"
+#include "knx_link_conf.h"
 
 /* Driver configuration */
 #include "ti_drivers_config.h"
@@ -47,15 +49,19 @@ typedef struct {
 
 
 /**
- * Variable privada con todos los parámetros del nivel de application
+ * @brief   Manage button notifications for sending KNX telegrams
  */
-static knxAppParams_t knxAppParams;
-
+static void _knxAppThread(void *arg0);
 
 /**
  * @brief   Manage incoming KNX telegrams to change the status of LEDs
  */
 static void _knxAppRecvThread(void *arg0);
+
+/**
+ * Variable privada con todos los parámetros del nivel de application
+ */
+static knxAppParams_t knxAppParams;
 
 /**
  * Variable privada con todos los parámetros del boton
@@ -96,20 +102,24 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, knxLinkHandle_t *uplink, knxLink
     }
 
 #if 0
-    knxLinkResetReq(link);
-    if (knxLinkResetReq(link) != 1) {
-        knxLinkResetReq(link);
-        knxLinkResetReq(link);
-        knxLinkResetReq(link);
-    }
-
 
     for (i = 0; i < 3; i++) {
+        knxLinkResetReq(uplink);
+        if (knxLinkResetReq(uplink) == 1) {
+           return TPUART_RESPONSE_RESET_CONFIRMATION;
+        }
+        else {
 
+        }
     }
 #endif
 
-    knxLinkSetAddressReq(link, knxAppParams.device_ia);
+    knxLinkSetAddressReq(knxAppParams.uplink, knxAppParams.device_ia);
+    knxLinkSetAddressReq(knxAppParams.downlink, knxAppParams.device_ia);
+
+
+    TaskHandle_t knxAppThreadHandle = NULL;
+    xTaskCreate(_knxAppThread , "knxAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppThreadHandle);
 
     couplerargs.fromlink = uplink;
     couplerargs.tolink = downlink;
@@ -147,7 +157,7 @@ void ButtonRightCallback(Button_Handle buttonRight, Button_EventMask buttonEvent
 }
 
 
-void _knxAppThread(void *arg0) {
+static void _knxAppThread(void *arg0) {
     uint8_t             slots[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
     knxLinkFrame_t      *frame;
@@ -183,7 +193,8 @@ void _knxAppThread(void *arg0) {
 
     for (i = 0; i < knxAppParams.gas_boton_0.used-1; i++) {
         if (frames[i] != NULL) {
-            recvDataCon();
+            recvDataCon(knxAppParams.uplink);
+            recvDataCon(knxAppParams.downlink);
         }
     }
 
@@ -221,7 +232,8 @@ void _knxAppThread(void *arg0) {
 
     for (i = 0; i < knxAppParams.gas_boton_1.used-1; i++) {
         if (frames[i] != NULL) {
-            recvDataCon();
+            recvDataCon(knxAppParams.uplink);
+            recvDataCon(knxAppParams.downlink);
         }
     }
 
@@ -231,36 +243,53 @@ void _knxAppThread(void *arg0) {
 }
 
 
-void _knxAppRecvThread(void *arg0) {
+static void _knxAppRecvThread1(void *arg0) {
     int i = 0 ;
     knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
-    knxLinkFrame_t      *frame;
+    uint8_t encoded_frame[1] = {0};
+    char txBuffer[1] = {encoded_frame[1]};
     knxAppCouplerThreadArg_t *ActuAlArg = (knxAppCouplerThreadArg_t *)arg0;
 
     recvDataInd(ActuAlArg->fromlink, &i);
-    // Forward message to tolink
-    //wait for confirmation
 
-    /**
-    for (i = 0; i < knxAppParams.gas_led_verde.used-1; i++) {
-        if (frames[i] != NULL) {
-            frame->da = knxAppParams.gas_led_verde.ga_set[i];
-
-            if(ga_set_in(&knxAppParams.gas_led_verde, frame->da) == 1) {
-                xQueueReceive(knxAppParams.ledGreenKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
-            }
-        }
+    i = knxLinkPoolAppLock();
+    frames[i] = knxLinkFramePoolAppGet(i);
+    if (frames[i]->hop_count > 0) {
+        knxLinkEncodeFrame(frames[i], encoded_frame, sizeof(encoded_frame));
+        knxLinkAdapterWriteBuffer(ActuAlArg->tolink, txBuffer, 1);
+        frames[i]->hop_count--;
     }
 
-    for (i = 0; i < knxAppParams.gas_led_amarillo.used-1; i++) {
-        if (frames[i] != NULL) {
-            frame->da = knxAppParams.gas_led_amarillo.ga_set[i];
+    if (frames[i]->hop_count == 0) {
+        while(1);
+    }
 
-            if(ga_set_in(&knxAppParams.gas_led_amarillo, frame->da) == 1) {
-                xQueueReceive(knxAppParams.ledYellowKNXQueue, &buttonInf.buttonValue, portMAX_DELAY);
-            }
-        }
-    }*/
+    recvDataCon(ActuAlArg->tolink);
+}
+
+static void _knxAppRecvThread2(void *arg0) {
+    int i = 0 ;
+    knxLinkFrame_t      *frames[KNX_LINK_FRAME_POOL_SIZE];
+    uint8_t encoded_frame[1] = {0};
+    char txBuffer[1] = {encoded_frame[1]};
+    knxAppCouplerThreadArg_t *ActuAlArg = (knxAppCouplerThreadArg_t *)arg0;
+
+    recvDataInd(ActuAlArg->fromlink, &i);
+
+    i = knxLinkPoolAppLock();
+    frames[i] = knxLinkFramePoolAppGet(i);
+    if (frames[i]->hop_count > 0) {
+        knxLinkEncodeFrame(frames[i], encoded_frame, sizeof(encoded_frame));
+        knxLinkAdapterWriteBuffer(ActuAlArg->tolink, txBuffer, 1);
+        frames[i]->hop_count--;
+    }
+
+    if (frames[i]->hop_count == 0) {
+        while(1);
+    }
+
+    recvDataCon(ActuAlArg->tolink);
+
 }
 
 

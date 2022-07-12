@@ -57,6 +57,7 @@
 #include "knx_app.h"
 #include "knx_link_adapter.h"
 #include "knx_link_internal.h"
+#include "knx_commissioning_data.h"
 
 #define UART_CH_NAME        10
 typedef struct {
@@ -137,8 +138,9 @@ void mainThread(void *arg0)
     LED_Handle ledGreen;
     LED_Handle ledYellow;
     LED_Handle ledRed;
-    knxLinkHandle_t knxlink_handle1;
-    knxLinkHandle_t knxlink_handle2;
+    struct knxLinkHandle_s* knxlink_handle1;
+    struct knxLinkHandle_s* knxlink_handle2;
+    knxLink_uart_t uarthandle1, uarthandle2;
     size_t      bytesWritten;
 
     /* Call driver init functions */
@@ -217,9 +219,9 @@ void mainThread(void *arg0)
         while (1);
     }
 
-    uartUplink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_NONE);
+    uartUplink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_EVEN);
     knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uarthandle1);
-    uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_NONE);
+    uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_ODD);
     knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uarthandle2);
     knxAppInit(MY_IA_ADDRESS, knxlink_handle1, knxlink_handle2);
 

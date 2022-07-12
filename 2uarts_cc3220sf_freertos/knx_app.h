@@ -22,13 +22,13 @@
 
 
 struct knxAppParams_s;
-
+struct knxLinkHandle_s;
 
 /**
  * Initialize KNX app
  * @return NULL if error, pointer to allocated application handle otherwise
  */
-struct knxAppParams_s * knxAppInit(void);
+struct knxAppParams_s * knxAppInit(uint16_t ia, struct knxLinkHandle_s *uplink, struct knxLinkHandle_s *downlink);
 
 /**
  * @brief   Callback function of the button SW2

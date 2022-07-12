@@ -3,13 +3,10 @@
  * @brief KNX library project
  */
 
+#include <stdint.h>
 #include "FreeRTOS.h"
 #include "knx_link_frame.h"
 #include "knx_link_adapter.h"
-#include <task.h>
-#include <semphr.h>
-#include <pthread.h>
-#include <stdint.h>
 #include <ti/drivers/UART.h>
 
 /**
