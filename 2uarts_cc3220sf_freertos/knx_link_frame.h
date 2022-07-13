@@ -78,7 +78,7 @@ uint8_t knxLinkCalcCHK(uint8_t *buffer, unsigned int bufsize);
  * @return 1 si la verificación es exitosa, 0 en caso contrario
  * @TOOD: A desarrollar
  */
-int knxLinkVerifyCHK(uint8_t *buffer, unsigned int bufsize, uint8_t chk);
+int knxLinkVerifyCHK(uint8_t *buffer, unsigned int bufsize, uint8_t CHK);
 
 /**
  * Codificar una trama de nivel de enlace como un array de bytes

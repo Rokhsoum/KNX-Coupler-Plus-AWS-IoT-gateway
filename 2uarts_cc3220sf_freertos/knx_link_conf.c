@@ -14,7 +14,6 @@ void sendDataReq(knxLinkHandle_t *link, int *frame_index) {
     xQueueSend(link->knxLinkDataReq, &frame_index, portMAX_DELAY);
 }
 
-
 void recvDataCon(knxLinkHandle_t *link) {
     xQueueReceive(link->knxLinkDataCon, &conf, portMAX_DELAY);
 }

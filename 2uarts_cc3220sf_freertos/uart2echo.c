@@ -135,12 +135,11 @@ void mainThread(void *arg0)
     Button_Handle buttonLeft;
     Button_Handle buttonRight;
     LED_Params ledParams;
-    LED_Handle ledGreen;
-    LED_Handle ledYellow;
+    //LED_Handle ledGreen;
+    //LED_Handle ledYellow;
     LED_Handle ledRed;
     struct knxLinkHandle_s* knxlink_handle1;
     struct knxLinkHandle_s* knxlink_handle2;
-    knxLink_uart_t uarthandle1, uarthandle2;
     size_t      bytesWritten;
 
     /* Call driver init functions */
@@ -194,14 +193,14 @@ void mainThread(void *arg0)
         while (1);
     }
 
-    //create_task(uartEcho, &taskUplink_args, "upLinkTh", tskIDLE_PRIORITY);
-    //create_task(uartEcho, &taskDownlink_args, "downLinkTh", tskIDLE_PRIORITY);
+    create_task(uartEcho, &taskUplink_args, "upLinkTh", tskIDLE_PRIORITY);
+    create_task(uartEcho, &taskDownlink_args, "downLinkTh", tskIDLE_PRIORITY);
 
 
     LED_Params_init(&ledParams);
     ledRed = LED_open(CONFIG_LED_0, &ledParams);
-    ledGreen = LED_open(CONFIG_LED_1, &ledParams);
-    ledYellow = LED_open(CONFIG_LED_2, &ledParams);
+    LED_open(CONFIG_LED_1, &ledParams);
+    LED_open(CONFIG_LED_2, &ledParams);
 
     Button_Params_init(&buttonParams);
     buttonParams.debounceDuration = 10;
@@ -218,6 +217,9 @@ void mainThread(void *arg0)
         LED_startBlinking(ledRed, 250, LED_BLINK_FOREVER);
         while (1);
     }
+
+    knxLink_uart_t uarthandle1 = uartUplink;
+    knxLink_uart_t uarthandle2 = uartDownlink;
 
     uartUplink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_EVEN);
     knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uarthandle1);

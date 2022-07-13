@@ -8,14 +8,8 @@
 #ifndef APP_H_
 #define APP_H_
 
-/**
- * Tipo estructurado con todos los parámetros del button
- */
-typedef struct {
-    uint8_t buttonID;               /**< Indica  el  botón */
-    uint8_t buttonValue;            /**< El valor del botón (siempre igual a 1) */
-} buttonMessageItem_t;
 
+#include "knx_app.h"
 
 
 struct appParams_s * appInit(void);

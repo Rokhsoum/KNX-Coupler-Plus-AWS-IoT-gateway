@@ -80,7 +80,7 @@ typedef struct {
  * The frame slot in the frame pool must be previously reserved and the frame fields filled
  * @return 0 if error, 1 otherwise
  */
-int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index);
+//int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index);
 
 
 /**
@@ -103,11 +103,11 @@ int knxLinkDataInd(struct knxLinkHandle_s *link);
 
 /**
  * @brief Link level initialization values
- */
+
 #define KNX_IA_ADDRESS    0x0000
 #define KNX_DA_ADDRESS    0x0000
 #define KNX_GA_ADDRESS    0x0000
-
+ */
 
 #endif /* KNX_LINK_H_ */
 

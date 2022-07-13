@@ -25,11 +25,11 @@ uint8_t knxLinkCalcCHK(uint8_t *buffer, unsigned int bufsize) {
     return CHK;
 }
 
-int knxLinkVerifyCHK(uint8_t *buffer, unsigned int bufsize, uint8_t chk) {
+int knxLinkVerifyCHK(uint8_t *buffer, unsigned int bufsize, uint8_t CHK) {
 
-    buffer[bufsize] = chk;
+    buffer[bufsize] = CHK;
 
-    if (chk = knxLinkCalcCHK(buffer, bufsize)) {
+    if (CHK = knxLinkCalcCHK(buffer, bufsize)) {
         return 1;
     }
     else {

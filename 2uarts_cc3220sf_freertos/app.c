@@ -22,6 +22,26 @@
 #include <ti/drivers/apps/Button.h>
 #include <ti/drivers/apps/LED.h>
 
+
+/**
+ * Tipo estructurado con todos los parámetros del application
+ */
+typedef struct appParams_s {
+    QueueHandle_t buttonsQueue;
+    QueueHandle_t ledGreenQueue;
+    QueueHandle_t ledYellowQueue;
+} appParams_t;
+
+
+/**
+ * Tipo estructurado con todos los parámetros del button
+ */
+typedef struct {
+    uint8_t buttonID;               /**< Indica del  botón */
+    uint8_t buttonValue;            /**< El valor del botón (siempre igual a 1) */
+} buttonMessageItem_t;
+
+
 /**
  * @brief   Manage button notifications for sending KNX telegrams
  */
@@ -42,14 +62,6 @@ static void _ledYellowThread(void *arg0);
  */
 static buttonMessageItem_t buttonInf;
 
-/**
- * Tipo estructurado con todos los parámetros del application
- */
-typedef struct appParams_s {
-    QueueHandle_t buttonsQueue;
-    QueueHandle_t ledGreenQueue;
-    QueueHandle_t ledYellowQueue;
-} appParams_t;
 
 /**
  * Variable privada con todos los parámetros del application
@@ -113,7 +125,7 @@ static void _appThread(void *arg0) {
 
     xQueueReceive(appParams.buttonsQueue, &buttonInf.buttonValue , portMAX_DELAY);
 
-    if (buttonInf.buttonID == CONFIG_BUTTON_1) {
+    if (buttonInf.buttonID == CONFIG_BUTTON_0) {
         xQueueSend(appParams.ledGreenQueue, &buttonInf.buttonValue, portMAX_DELAY);
     }
     else {

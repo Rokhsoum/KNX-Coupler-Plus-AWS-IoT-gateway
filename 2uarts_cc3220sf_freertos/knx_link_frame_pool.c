@@ -52,7 +52,7 @@ int knxLinkFramePoolLock(knxLinkFramePoolUser_t flag) {
 		return res;
 	}
 
-    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
+    for (i = 0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
         if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) {
             knxLinkFramePool.flags[i] = flag;
             res = i;
