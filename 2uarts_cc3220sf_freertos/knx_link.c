@@ -14,7 +14,7 @@
 #include "knx_link_gadd_pool.h"
 #include "knx_link_state.h"
 #include "knx_tpuart.h"
-#include "knx_commissioning_data.h"
+//#include "knx_commissioning_data.h"
 
 /* Driver configuration */
 //#include "ti_drivers_config.h"
@@ -46,7 +46,7 @@
  * Variable privada con todos los parámetros del nivel de enlace
  */
 static int knxLink_handleused = 0;
-static knxLinkHandle_t knxLinkParams[knxLink_handleused];
+static knxLinkHandle_t knxLinkParams[2];
 
 /**
  * @brief Reception task, manage incoming data from TP-UART 
@@ -159,7 +159,7 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
 
        knxLinkParams[knxLink_handleused].state = KNX_LINK_INIT_STATE;
        knxLinkParams[knxLink_handleused].stateR = E_CTRL;
-       knxLinkParams[knxLink_handleused].ia = KNX_PERSONAL_ID;
+       knxLinkParams[knxLink_handleused].ia = ia;
        //knxLinkParams[knxLink_handleused].da = KNX_DA_ADDRESS;
        //knxLinkParams[knxLink_handleused].ga = KNX_GA_ADDRESS;
 
@@ -231,9 +231,7 @@ int knxLinkResetReq(knxLinkHandle_t *link) {
                 //xSemaphoreGive(knxLinkParams[knxLink_handleused].knxLinkResetSem); on le give aprés dans RecvThread
             }
         }
-
     }
-
     return 1;
 }
 
@@ -261,11 +259,10 @@ uint8_t knxLinkResetCon(knxLinkHandle_t *link) {
 static void _knxLinkDataReqThread(void *arg0) {
     knxLinkHandle_t *link = (knxLinkHandle_t *)arg0;
     // Variables locales que nos harán falta:
-    int frame_index, k = 0;
+    int k = 0, frame_index = 0;
     int len = KNX_LINK_STD_FRAME_MAX;
     uint8_t encoded_frame[len];
     char Bufftemporal[2];
-    frame_index = knxLinkPoolLinkLock();
 
     /**
      * @TODO
@@ -362,6 +359,9 @@ static void _knxLinkRecvThread(void *arg0) {
     int len = KNX_LINK_EXT_FRAME_MAX;
     knxLinkFrame_t frame[len];
     uint8_t FT[1];
+    uint8_t AT[1];
+    uint8_t hCOUNT[1];
+    uint8_t extFF[1];
     uint8_t saH[1];
     uint8_t saL[1];
     uint8_t daH[1];
@@ -409,6 +409,12 @@ static void _knxLinkRecvThread(void *arg0) {
                     link->stateR = E_CTRLE;
                 }
                 break;
+
+            case E_CTRLE:
+                memcpy(AT, &frame[14], 1);
+                memcpy(hCOUNT, &frame[13], 3);
+                memcpy(extFF, &frame[11], 4);
+                link->stateR = E_SA_H;
 
             case E_SA_H:
                 if (FT == 0) {

@@ -141,6 +141,7 @@ void mainThread(void *arg0)
     struct knxLinkHandle_s* knxlink_handle1;
     struct knxLinkHandle_s* knxlink_handle2;
     size_t      bytesWritten;
+    commissioning_data_t comm_data;
 
     /* Call driver init functions */
     GPIO_init();
@@ -225,7 +226,11 @@ void mainThread(void *arg0)
     knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uarthandle1);
     uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_ODD);
     knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uarthandle2);
-    knxAppInit(MY_IA_ADDRESS, knxlink_handle1, knxlink_handle2);
+    comm_data.objects = getCommissioningObjects();
+    comm_data.objects_num = getCommissioningObjectsNum();
+    comm_data.gas = getCommissioningGAs();
+    comm_data.gas_num = getCommissioningGAsNum();
+    knxAppInit(MY_IA_ADDRESS, &comm_data, knxlink_handle1, knxlink_handle2);
 
     /* Loop forever doing nothing */
     while (1) {

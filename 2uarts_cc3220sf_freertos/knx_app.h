@@ -12,6 +12,7 @@
 #include <task.h>
 #include <stdint.h>
 #include "knx_link_gadd_pool.h"
+#include "knx_commissioning_data.h"
 
 #include <ti/drivers/apps/Button.h>
 
@@ -28,7 +29,7 @@ struct knxLinkHandle_s;
  * Initialize KNX app
  * @return NULL if error, pointer to allocated application handle otherwise
  */
-struct knxAppParams_s * knxAppInit(uint16_t ia, struct knxLinkHandle_s *uplink, struct knxLinkHandle_s *downlink);
+struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data, struct knxLinkHandle_s *uplink, struct knxLinkHandle_s *downlink);
 
 /**
  * @brief   Callback function of the button SW2

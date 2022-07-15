@@ -32,7 +32,8 @@
  */
 typedef struct knxAppParams_s {
     uint16_t device_ia;                             /**< Dirección individual del dispositivo */
-    knxLink_uart_t uarthandle;
+    knxLink_uart_t uartUplink;
+    knxLink_uart_t uartDownlink;
     knxLinkHandle_t *uplink;                        /**< upLink */
     knxLinkHandle_t *downlink;                      /**< downLink */
     ga_set_type gas_boton_0, gas_boton_1;           /**< Dirección del grupo de butons 0 y 1 */
@@ -46,6 +47,7 @@ typedef struct knxAppParams_s {
 typedef struct {
     knxLinkHandle_t *fromlink;
     knxLinkHandle_t *tolink;
+    knxLink_uart_t uarthandle;
 } knxAppCouplerThreadArg_t;
 
 
@@ -77,32 +79,31 @@ static knxAppParams_t knxAppParams;
 // ............................................................................
 
 
-struct knxAppParams_s * knxAppInit(uint16_t ia, knxLinkHandle_t *uplink, knxLinkHandle_t *downlink) {
+struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data, knxLinkHandle_t *uplink, knxLinkHandle_t *downlink) {
     int i;
     knxAppParams.device_ia = ia;
     knxAppCouplerThreadArg_t couplerargs;
 
-    ga_set_init(&knxAppParams.gas_boton_0, ARRAY_SIZE(GA_SET_BOTON_0));
-    for (i = 0; i < ARRAY_SIZE(GA_SET_BOTON_0)-1; i++) {
-        ga_set_add(&knxAppParams.gas_boton_0, GA_SET_BOTON_0[i]);
+    ga_set_init(&knxAppParams.gas_boton_0, comm_data->objects[0].gas_length);
+    for (i = comm_data->objects[0].gas_start_index; i < comm_data->objects[0].gas_length-1; i++) {
+        ga_set_add(&knxAppParams.gas_boton_0, comm_data->gas[i]);
     }
 
-    ga_set_init(&knxAppParams.gas_boton_1, ARRAY_SIZE(GA_SET_BOTON_1));
-    for (i = 0 ; i < ARRAY_SIZE(GA_SET_BOTON_0)-1; i++) {
-        ga_set_add(&knxAppParams.gas_boton_1, GA_SET_BOTON_1[i]);
+    ga_set_init(&knxAppParams.gas_boton_1, comm_data->objects[1].gas_length);
+    for (i = comm_data->objects[1].gas_start_index ; i < comm_data->objects[1].gas_length-1; i++) {
+        ga_set_add(&knxAppParams.gas_boton_1, comm_data->gas[i]);
     }
 
-    ga_set_init(&knxAppParams.gas_led_verde, ARRAY_SIZE(GA_SET_LED_0));
-    for ( i = 0; i < ARRAY_SIZE(GA_SET_BOTON_0)-1; i++) {
-        ga_set_add(&knxAppParams.gas_led_verde, GA_SET_LED_0[i]);
+    ga_set_init(&knxAppParams.gas_led_verde, comm_data->objects[2].gas_length);
+    for ( i = comm_data->objects[2].gas_start_index; i < comm_data->objects[2].gas_length-1; i++) {
+        ga_set_add(&knxAppParams.gas_led_verde, comm_data->gas[i]);
     }
 
-    ga_set_init(&knxAppParams.gas_led_amarillo, ARRAY_SIZE(GA_SET_LED_1));
-    for (i = 0; i < ARRAY_SIZE(GA_SET_BOTON_0)-1; i++) {
-        ga_set_add(&knxAppParams.gas_led_amarillo, GA_SET_LED_1[i]);
+    ga_set_init(&knxAppParams.gas_led_amarillo, comm_data->objects[3].gas_length);
+    for (i = comm_data->objects[3].gas_start_index; i < comm_data->objects[3].gas_length-1; i++) {
+        ga_set_add(&knxAppParams.gas_led_amarillo, comm_data->gas[i]);
     }
 
-#if 0
 
     for (i = 0; i < 3; i++) {
         do {
@@ -110,20 +111,22 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, knxLinkHandle_t *uplink, knxLink
             knxLinkResetReq(downlink);
             i++;
         }
-        while (knxLinkResetReq(uplink) == 1 && knxLinkResetReq(downlink) == 1 || i = 3);
+        while (knxLinkResetReq(uplink) == 0 && knxLinkResetReq(downlink) == 0 || i <= 3);
 
         if (i == 3 && knxLinkResetReq(uplink) == 0 && knxLinkResetReq(downlink) == 0) {
-            TPUART_CTRLFIELD_ACTIVATE_BUSMON;
+            char buffer[1] = {TPUART_CTRLFIELD_ACTIVATE_BUSY_MODE};
+            knxLinkAdapterWriteBuffer(knxAppParams.uartUplink, buffer, 1);
+            knxLinkAdapterWriteBuffer(knxAppParams.uartDownlink, buffer, 1);
         }
     }
-#endif
+
 
     if (knxLinkResetReq(uplink) == 1 && knxLinkResetReq(downlink) == 1) {
         knxLinkSetAddressReq(uplink, knxAppParams.device_ia);
         knxLinkSetAddressReq(downlink, knxAppParams.device_ia);
     }
     else {
-        break;
+        return 0;
     }
 
 
@@ -132,11 +135,13 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, knxLinkHandle_t *uplink, knxLink
 
     couplerargs.fromlink = uplink;
     couplerargs.tolink = downlink;
+    couplerargs.uarthandle = knxAppParams.uartDownlink;
     TaskHandle_t knxAppRecvThreadHandle = NULL;
     xTaskCreate(_knxAppRecvThread, "knxAppRecvThread1", US_STACK_DEPTH, (void*) &couplerargs, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
 
     couplerargs.fromlink = downlink;
     couplerargs.tolink = uplink;
+    couplerargs.uarthandle = knxAppParams.uartUplink;
     xTaskCreate(_knxAppRecvThread, "knxAppRecvThread2", US_STACK_DEPTH, (void*) &couplerargs, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
 
     //knxAppParams.buttonsKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, sizeof(buttonMessageItem_t));
@@ -249,7 +254,7 @@ static void _knxAppRecvThread(void *arg0) {
         frames[i] = knxLinkFramePoolAppGet(i);
         if (frames[i]->hop_count > 0) {
             knxLinkEncodeFrame(frames[i], encoded_frame, sizeof(encoded_frame));
-            knxLinkAdapterWriteBuffer(knxAppParams.uarthandle, txBuffer, 1);
+            knxLinkAdapterWriteBuffer(ActualArg->uarthandle, txBuffer, 1);
             frames[i]->hop_count--;
         }
 
