@@ -23,30 +23,11 @@ knxLink_uart_t knxLinkAdapterOpen(int channel, int baudRate, int parityType) {
     params.writeMode = UART_MODE_BLOCKING;
     params.readMode = UART_MODE_BLOCKING;
     params.baudRate = (baudRate == KNX_LINK_ADAPTER_BPS_9600? 9600 : 19200);
-    params.parityType = (parityType == KNX_LINK_ADAPTER_PARITY_NONE? UART_PAR_NONE : UART_PAR_EVEN);
+    params.parityType = (parityType == KNX_LINK_ADAPTER_PARITY_NONE? UART_PAR_NONE : (parityType == KNX_LINK_ADAPTER_PARITY_EVEN? UART_PAR_EVEN : UART_PAR_ODD));
 
-    if (baudRate == KNX_LINK_ADAPTER_BPS_9600 && parityType == KNX_LINK_ADAPTER_PARITY_EVEN) {
-        channel = KNX_LINK_ADAPTER_UPLINK;
-        UART_open(channel, &params);
-            if (UART_open(channel, &params) == NULL) {
-                /* UART_open() failed */
-                while (1);
-            }
-    }
-    else if (baudRate == KNX_LINK_ADAPTER_BPS_19200 && parityType == KNX_LINK_ADAPTER_PARITY_ODD)
-    {
-        channel = KNX_LINK_ADAPTER_DOWNLINK;
-        UART_open(channel, &params);
-            if (UART_open(channel, &params) == NULL) {
-                /* UART_open() failed */
-                while (1);
-            }
-    }
-    else {
-        UART_open(channel, &params) == NULL;
-    }
+    UART_Handle res = UART_open(channel, &params);
 
-    return UART_STATUS_SUCCESS;
+    return res;
 }
 
 
@@ -61,6 +42,6 @@ char knxLinkAdapterReadChar(knxLink_uart_t channel) {
 
 void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, char *txBuffer, int len) {
 
-    UART_write(channel, &txBuffer, len);
+    UART_write(channel, txBuffer, len);
 
 }

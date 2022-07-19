@@ -37,6 +37,7 @@ int getCommissioningObjectsNum(void);
 const uint16_t *getCommissioningGAs(void);
 int getCommissioningGAsNum(void);
 
+
 #if 0
 
 /* Boton SW2 genera dos mensajes: 5/1/x y 5/1/100, siendo x = identificador único del proyecto */ 

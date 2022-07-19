@@ -66,12 +66,12 @@ typedef struct {
     char        name[UART_CH_NAME];
 } UART_Task_Arg_t;
 
-static UART_Task_Arg_t taskUplink_args, taskDownlink_args;
-static const char echoPrompt[] = "Echoing characters:\r\n";
-static const char taskPrompt[] = "Task ready (UART driver, channel %01d, name %s):\r\n";
-#define TASK_PROMPT_MAX     (sizeof(taskPrompt)-4-2+1+UART_CH_NAME+1)
+//static UART_Task_Arg_t taskUplink_args, taskDownlink_args;
+//static const char echoPrompt[] = "Echoing characters:\r\n";
+//static const char taskPrompt[] = "Task ready (UART driver, channel %01d, name %s):\r\n";
+//#define TASK_PROMPT_MAX     (sizeof(taskPrompt)-4-2+1+UART_CH_NAME+1)
 
-static void uartEcho(void *arg);
+//static void uartEcho(void *arg);
 
 TaskHandle_t create_task(TaskFunction_t func, void *arg, char *taskname, int priority) {
     bool schedulerStarted;
@@ -92,7 +92,7 @@ TaskHandle_t create_task(TaskFunction_t func, void *arg, char *taskname, int pri
     return handle;
 }
 
-
+#if 0
 static void uartEcho(void *arg) {
     char        input;
     char        prompt[TASK_PROMPT_MAX];
@@ -121,14 +121,14 @@ static void uartEcho(void *arg) {
         vTaskDelay(1);
     }
 }
-
+#endif
 /*
  *  ======== mainThread ========
  */
 void mainThread(void *arg0)
 {
 
-    UART_Params uartParams;
+    //UART_Params uartParams;
     UART_Handle uartUplink;
     UART_Handle uartDownlink;
     Button_Params buttonParams;
@@ -140,20 +140,21 @@ void mainThread(void *arg0)
     LED_Handle ledRed;
     struct knxLinkHandle_s* knxlink_handle1;
     struct knxLinkHandle_s* knxlink_handle2;
-    size_t      bytesWritten;
+    //size_t      bytesWritten;
     commissioning_data_t comm_data;
 
     /* Call driver init functions */
     GPIO_init();
-    UART_init();
+   // UART_init();
 
     /* Configure the LED pin */
     GPIO_setConfig(CONFIG_LED_0_GPIO, GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW);
     /* Turn off user LED */
     GPIO_write(CONFIG_LED_0_GPIO, CONFIG_GPIO_LED_OFF);
 
+#if 0
     UART_Params_init(&uartParams);
-    uartParams.baudRate = 115200;
+    uartParams.baudRate = 9600;
     uartParams.readMode = UART_MODE_BLOCKING;
     uartParams.writeMode = UART_MODE_BLOCKING;
     uartParams.readTimeout = UART_WAIT_FOREVER;
@@ -161,6 +162,7 @@ void mainThread(void *arg0)
     uartParams.readEcho = UART_ECHO_OFF;
     uartParams.readDataMode = UART_DATA_BINARY;
     uartParams.writeDataMode = UART_DATA_BINARY;
+    uartParams.parityType = UART_PAR_EVEN;
 
     uartUplink = UART_open(CONFIG_UART_0, &uartParams);
     uartDownlink = UART_open(CONFIG_UART_1, &uartParams);
@@ -171,16 +173,9 @@ void mainThread(void *arg0)
         while (1);
     }
 
-    taskUplink_args.channel = CONFIG_UART_0;
-    taskUplink_args.uart    = uartUplink;
-    memset(taskUplink_args.name, '\0', UART_CH_NAME);
-    strncpy(taskUplink_args.name, "UPLINK", UART_CH_NAME);
+#endif
 
-    taskDownlink_args.channel = CONFIG_UART_1;
-    taskDownlink_args.uart    = uartDownlink;
-    memset(taskDownlink_args.name, '\0', UART_CH_NAME);
-    strncpy(taskDownlink_args.name, "DOWNLINK", UART_CH_NAME);
-
+#if 0
     bytesWritten = UART_write(uartUplink, echoPrompt, sizeof(echoPrompt));
     if (bytesWritten != sizeof(echoPrompt)) {
         /* UART_write() failed, turn on user LED */
@@ -194,9 +189,10 @@ void mainThread(void *arg0)
         while (1);
     }
 
+
     create_task(uartEcho, &taskUplink_args, "upLinkTh", tskIDLE_PRIORITY);
     create_task(uartEcho, &taskDownlink_args, "downLinkTh", tskIDLE_PRIORITY);
-
+#endif
 
     LED_Params_init(&ledParams);
     ledRed = LED_open(CONFIG_LED_0, &ledParams);
@@ -219,13 +215,26 @@ void mainThread(void *arg0)
         while (1);
     }
 
-    knxLink_uart_t uarthandle1 = uartUplink;
-    knxLink_uart_t uarthandle2 = uartDownlink;
+    //knxLink_uart_t uarthandle1 = uartUplink;
+    //knxLink_uart_t uarthandle2 = uartDownlink;
 
     uartUplink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_EVEN);
-    knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uarthandle1);
     uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_ODD);
-    knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uarthandle2);
+
+#if 0
+    taskUplink_args.channel = CONFIG_UART_0;
+    taskUplink_args.uart    = uartUplink;
+    memset(taskUplink_args.name, '\0', UART_CH_NAME);
+    strncpy(taskUplink_args.name, "UPLINK", UART_CH_NAME);
+
+    taskDownlink_args.channel = CONFIG_UART_1;
+    taskDownlink_args.uart    = uartDownlink;
+    memset(taskDownlink_args.name, '\0', UART_CH_NAME);
+    strncpy(taskDownlink_args.name, "DOWNLINK", UART_CH_NAME);
+#endif
+
+    knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uartUplink);
+    knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uartDownlink);
     comm_data.objects = getCommissioningObjects();
     comm_data.objects_num = getCommissioningObjectsNum();
     comm_data.gas = getCommissioningGAs();

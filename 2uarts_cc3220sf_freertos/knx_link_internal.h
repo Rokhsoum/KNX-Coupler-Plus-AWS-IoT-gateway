@@ -30,7 +30,7 @@ typedef struct knxLinkHandle_s {
     //uint16_t da;                        /**< Dirección individual del destination */
     int state;                          /**< Estado del nivel de enlace */
     int stateR;                         /**< Estado de la recepción de datos */
-    //uint8_t txSlot;                     /**< Índice del telegrama en el pool, transmisión (conservar de data request para data confirmation) */
+    uint8_t txSlot;                     /**< Índice del telegrama en el pool, transmisión (conservar de data request para data confirmation) */
     //uint8_t rxSlot;                     /**< Índice del telegrama en el pool, recepción (para data indication) */
     uint16_t rxiaframe;                 /**< Dirección individual del trama recibida*/  //à comparer avec ia pour savoir si remote or local
 } knxLinkHandle_t;

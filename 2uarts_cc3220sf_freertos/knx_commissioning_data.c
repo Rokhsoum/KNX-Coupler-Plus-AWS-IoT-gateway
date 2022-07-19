@@ -37,6 +37,7 @@ const uint16_t ga_commissioning[] = {
     KNX_BUILD_GA_ADDRESS(5,2,100),                      // 5/2/100
 };
 
+
 const object_commissioning_t *getCommissioningObjects(void) {
     return objects;
 }

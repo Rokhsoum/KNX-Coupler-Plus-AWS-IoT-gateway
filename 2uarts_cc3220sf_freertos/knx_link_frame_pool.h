@@ -71,6 +71,13 @@ int knxLinkPoolLinkLock(void);
  */
 void knxLinkPoolYieldLock(int i);
 
+/**
+ * @brief Send frame to the application or a confirmation
+ * @param[in] i Slot index returned by knxLinkAppLock()
+ * If it's a remote frame, i is sent to kncLinkDataInd;
+ * otherwise, i and a confirmation (positive or negative) are sent to knxLinkDataCon
+ */
+void knxLinkPoolLinkYieldLock(int i);
 
 /**
  * @brief Reserve a frame slot for the link level
@@ -90,6 +97,17 @@ void knxLinkPoolAppYieldLock(int i);
  * the request is invalid.
  */
 void knxLinkFramePoolUnlock(int i, knxLinkFramePoolUser_t flag);
+
+/**
+ * @brief Free a previously reserved frame slot
+ * @param[in] i Slot index returned by knxLinkPoolLinkLock()
+ * @return Nothing
+ * @remarks If i is not a valid slot index or the slot is not reserved, or the flag value does not match the slot flag value,
+ * this function does nothing.
+ * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
+ * the request is invalid.
+ */
+void knxLinkPoolLinkUnLock(int i);
 
 /**
  * @brief Free a previously reserved frame slot

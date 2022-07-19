@@ -47,21 +47,21 @@ static int _knxLinkEncodeAsStdFrame(knxLinkFrame_t *frame, uint8_t *buffer, unsi
      */
 	// Resto del c贸digo ...
 
-    uint8_t frame_type = 0, rep = 0, prio = 0;
+    uint8_t FT = 0;
+    buffer[0] = knxLinkEncodeCtrl(FT, frame->rep, frame->prio);
 
-    knxLinkEncodeCtrl(frame_type, rep, prio);
+    uint8_t saH, saL;
+    saH = knxLinkDecodeAddressHigh(frame->sa);
+    saL = knxLinkDecodeAddressLow(frame->sa);
+    buffer[1] = knxLinkEncodeAddress(saH, saL);
 
-    uint8_t highSA = 0, lowSA = 0;
+    uint8_t daH, daL;
+    daH = knxLinkDecodeAddressHigh(frame->da);
+    daL = knxLinkDecodeAddressLow(frame->da);
+    buffer[3] = knxLinkEncodeAddress(daH, daL);
 
-    knxLinkEncodeAddress(highSA, lowSA);
+    buffer[5] = knxLinkEncodeAtLsduLg(frame->at, frame->hop_count, frame->length);
 
-    uint8_t highDA = 0, lowDA = 0;
-
-    knxLinkEncodeAddress(highDA, lowDA);
-
-    uint8_t at = 0, hop_count = 0, lg =0;
-
-    knxLinkEncodeAtLsduLg(at, hop_count, lg);
 
     res = sizeof(_knxLinkEncodeAsStdFrame);
     if (res != sizeof(_knxLinkEncodeAsStdFrame)) {
@@ -82,25 +82,23 @@ static int _knxLinkEncodeAsExtFrame(knxLinkFrame_t *frame, uint8_t *buffer, unsi
      */
 	// Resto del c贸digo ...
 
-    uint8_t frame_type = 0, rep = 0, prio = 0;
+    uint8_t FT = 1;
+    buffer[0] = knxLinkEncodeCtrl(FT, frame->rep, frame->prio);
 
-    knxLinkEncodeCtrl(frame_type, rep, prio);
+    buffer[1] = knxLinkEncodeCtrle(frame->at, frame->hop_count, frame->ext_ff);
 
-    uint8_t at = 0, hop_count = 0, ext_ff = 0;
+    uint8_t saH, saL;
+    saH = knxLinkDecodeAddressHigh(frame->sa);
+    saL = knxLinkDecodeAddressLow(frame->sa);
+    buffer[2] = knxLinkEncodeAddress(saH, saL);
 
-    knxLinkEncodeCtrle(at, hop_count, ext_ff);
+    uint8_t daH, daL;
+    daH = knxLinkDecodeAddressHigh(frame->da);
+    daL = knxLinkDecodeAddressLow(frame->da);
+    buffer[4] = knxLinkEncodeAddress(daH, daL);
 
-    uint8_t highSA = 0, lowSA = 0;
+    //buffer[5] = knxLinkEncodeAtLsduLg(frame->at, frame->hop_count, frame->length);
 
-    knxLinkEncodeAddress(highSA, lowSA);
-
-    uint8_t highDA = 0, lowDA = 0;
-
-    knxLinkEncodeAddress(highDA, lowDA);
-
-    //uint8_t lg = 0;
-
-    //knxLinkEncodeAtLsduLg(at, hop_count, lg); //v閞ifier
 
     res = sizeof(_knxLinkEncodeAsExtFrame);
     if (res != sizeof(_knxLinkEncodeAsExtFrame)) {
@@ -132,33 +130,30 @@ static int _knxLinkDecodeAsStdFrame(knxLinkFrame_t *frame, uint8_t *buffer, unsi
      */
 	// Resto del c贸digo ...
 
-    uint8_t ctrl = 0;
+    uint8_t FT;
+    FT = knxLinkDecodeCtrlFt(buffer[0]);
+    if (FT == 0) {
+        frame->rep = knxLinkDecodeCtrlRep(buffer[0]);
+        frame->prio = knxLinkDecodeCtrlPrio(buffer[0]);
 
-    knxLinkDecodeCtrlFt(ctrl);
+        uint8_t saH, saL;
+        saH = knxLinkDecodeAddressHigh(buffer[1]);
+        saL = knxLinkDecodeAddressLow(buffer[2]);
+        frame->sa = knxLinkEncodeAddress(saH, saL);
 
-    knxLinkDecodeCtrlRep(ctrl);
+        uint8_t daH = 0, daL = 0;
+        saH = knxLinkDecodeAddressHigh(buffer[3]);
+        saL = knxLinkDecodeAddressLow(buffer[4]);
+        frame->da = knxLinkEncodeAddress(daH, daL);
 
-    knxLinkDecodeCtrlPrio(ctrl);
+        frame->at = knxLinkDecodeAtLsduLgAt(buffer[5]);
+        frame->hop_count = knxLinkDecodeAtLsduLgHopCount(buffer[5]);
+        frame->length = knxLinkDecodeAtLsduLgLg(buffer[5]);
+    }
+    else {
+        return 0;
+    }
 
-    uint16_t addressSA = 0;
-
-    knxLinkDecodeAddressHigh(addressSA);
-
-    knxLinkDecodeAddressLow(addressSA);
-
-    uint16_t addressDA = 0;
-
-    knxLinkDecodeAddressHigh(addressDA);
-
-    knxLinkDecodeAddressLow(addressDA);
-
-    uint8_t atlsdulg = 0;
-
-    knxLinkDecodeAtLsduLgAt(atlsdulg);
-
-    knxLinkDecodeAtLsduLgHopCount(atlsdulg);
-
-    knxLinkDecodeAtLsduLgLg(atlsdulg);
 
     res =  _knxLinkDecodeAsStdFrame(frame, buffer, bufsize);
     if (res == _knxLinkDecodeAsExtFrame(frame, buffer, bufsize)) {
@@ -179,37 +174,33 @@ static int _knxLinkDecodeAsExtFrame(knxLinkFrame_t *frame, uint8_t *buffer, unsi
      */
 	// Resto del c贸digo ...
 
-    uint8_t ctrl =0;
+    uint8_t FT;
+    FT = knxLinkDecodeCtrlFt(buffer[0]);
+        if (FT == 1) {
+            frame->rep = knxLinkDecodeCtrlRep(buffer[0]);
+            frame->prio = knxLinkDecodeCtrlPrio(buffer[0]);
 
-    knxLinkDecodeCtrlFt(ctrl);
+            frame->at = knxLinkDecodeCtrleAt(buffer[1]);
+            frame->hop_count = knxLinkDecodeCtrleHopCount(buffer[1]);
+            frame->ext_ff = knxLinkDecodeCtrleExtFF(buffer[1]);
 
-    knxLinkDecodeCtrlRep(ctrl);
 
-    knxLinkDecodeCtrlPrio(ctrl);
+            uint8_t saH, saL;
+            saH = knxLinkDecodeAddressHigh(buffer[2]);
+            saL = knxLinkDecodeAddressLow(buffer[3]);
+            frame->sa = knxLinkEncodeAddress(saH, saL);
 
-    uint16_t addressSA = 0;
+            uint8_t daH = 0, daL = 0;
+            saH = knxLinkDecodeAddressHigh(buffer[4]);
+            saL = knxLinkDecodeAddressLow(buffer[5]);
+            frame->da = knxLinkEncodeAddress(daH, daL);
 
-    knxLinkDecodeAddressHigh(addressSA);
+            //frame->length = knxLinkDecodeAtLsduLgLg(buffer[6]);
+        }
+        else {
+            return 0;
+        }
 
-    knxLinkDecodeAddressLow(addressSA);
-
-    uint16_t addressDA = 0;
-
-    knxLinkDecodeAddressHigh(addressDA);
-
-    knxLinkDecodeAddressLow(addressDA);
-
-    uint8_t atlsdulg = 0;
-
-    knxLinkDecodeAtLsduLgLg(atlsdulg);
-
-    uint8_t ctrle = 0;
-
-    knxLinkDecodeCtrleAt(ctrle);
-
-    knxLinkDecodeCtrleHopCount(ctrle);
-
-    knxLinkDecodeCtrleExtFF(ctrle);
 
     res =  _knxLinkDecodeAsStdFrame(frame, buffer, bufsize);
     if (res == _knxLinkDecodeAsExtFrame(frame, buffer, bufsize)) {

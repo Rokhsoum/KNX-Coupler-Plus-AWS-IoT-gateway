@@ -7,7 +7,6 @@
 #include "knx_link_internal.h"
 #include "knx_link.h"
 #include <FreeRTOS.h>
-#include <semphr.h>
 
 /**
  * Tipo estructurado con todos los parámetros del pool
@@ -107,6 +106,20 @@ void knxLinkPoolYieldLock(int i) {
 }
 
 
+void knxLinkPoolLinkYieldLock(int i) {
+    knxLinkHandle_t *link = 0;
+    knxLinkDataCon_t con;
+
+    if(knxLinkFramePool.frames[i].sa != link->ia) {
+        xQueueSend(link->knxLinkDataInd, &i, portMAX_DELAY);
+    }
+    else {
+        con.frame_index = i;
+        xQueueSend(link->knxLinkDataCon, &con, portMAX_DELAY);
+    }
+}
+
+
 void knxLinkPoolAppYieldLock(int i) {
     knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_APP;
 
@@ -143,6 +156,22 @@ void knxLinkFramePoolUnlock(int i, knxLinkFramePoolUser_t flag) {
     }
 }
 
+void knxLinkPoolLinkUnLock(int i) {
+    knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_UPLINK? KNX_LINK_FRAME_POOL_FLAG_UPLINK : KNX_LINK_FRAME_POOL_FLAG_DOWNLINK;
+
+    for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
+        if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_UPLINK || KNX_LINK_FRAME_POOL_FLAG_DOWNLINK) {
+            knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_AVAILABLE;
+        }
+        else {
+            return;
+        }
+
+        if ( (i > KNX_LINK_FRAME_POOL_SIZE) || (i < 0) ) {
+            return;
+        }
+    }
+}
 
 void knxLinkPoolAppUnLock(int i) {
     knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_APP;

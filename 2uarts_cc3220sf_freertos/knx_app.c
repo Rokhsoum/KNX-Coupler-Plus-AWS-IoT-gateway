@@ -85,22 +85,22 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data,
     knxAppCouplerThreadArg_t couplerargs;
 
     ga_set_init(&knxAppParams.gas_boton_0, comm_data->objects[0].gas_length);
-    for (i = comm_data->objects[0].gas_start_index; i < comm_data->objects[0].gas_length-1; i++) {
+    for (i = comm_data->objects[0].gas_start_index; i < (comm_data->objects[0].gas_length+comm_data->objects[0].gas_start_index); i++) {
         ga_set_add(&knxAppParams.gas_boton_0, comm_data->gas[i]);
     }
 
     ga_set_init(&knxAppParams.gas_boton_1, comm_data->objects[1].gas_length);
-    for (i = comm_data->objects[1].gas_start_index ; i < comm_data->objects[1].gas_length-1; i++) {
+    for (i = comm_data->objects[1].gas_start_index ; i < (comm_data->objects[1].gas_length+comm_data->objects[1].gas_start_index); i++) {
         ga_set_add(&knxAppParams.gas_boton_1, comm_data->gas[i]);
     }
 
     ga_set_init(&knxAppParams.gas_led_verde, comm_data->objects[2].gas_length);
-    for ( i = comm_data->objects[2].gas_start_index; i < comm_data->objects[2].gas_length-1; i++) {
+    for ( i = comm_data->objects[2].gas_start_index; i <(comm_data->objects[2].gas_length+comm_data->objects[2].gas_start_index); i++) {
         ga_set_add(&knxAppParams.gas_led_verde, comm_data->gas[i]);
     }
 
     ga_set_init(&knxAppParams.gas_led_amarillo, comm_data->objects[3].gas_length);
-    for (i = comm_data->objects[3].gas_start_index; i < comm_data->objects[3].gas_length-1; i++) {
+    for (i = comm_data->objects[3].gas_start_index; i < (comm_data->objects[3].gas_length+comm_data->objects[3].gas_start_index); i++) {
         ga_set_add(&knxAppParams.gas_led_amarillo, comm_data->gas[i]);
     }
 
@@ -111,7 +111,7 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data,
             knxLinkResetReq(downlink);
             i++;
         }
-        while (knxLinkResetReq(uplink) == 0 && knxLinkResetReq(downlink) == 0 || i <= 3);
+        while (knxLinkResetReq(uplink) == 0 && knxLinkResetReq(downlink) == 0 || i < 3);
 
         if (i == 3 && knxLinkResetReq(uplink) == 0 && knxLinkResetReq(downlink) == 0) {
             char buffer[1] = {TPUART_CTRLFIELD_ACTIVATE_BUSY_MODE};
