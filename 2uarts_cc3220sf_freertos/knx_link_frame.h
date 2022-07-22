@@ -7,7 +7,6 @@
 #define KNX_LINK_FRAME_H_
 
 #include <stdlib.h>
-#include "knx_link.h"
 
 // ___---=== Declaraciones relacionadas con el tipo de telegramas KXN ===---___
 

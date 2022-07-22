@@ -8,9 +8,12 @@
 
 #include <stdint.h>
 #include "knx_link_adapter.h"
+#include "knx_link_state.h"
+#include "knx_link_frame.h"
+#include "knx_link_frame_pool.h"
+#include "knx_link_gadd_pool.h"
 
-
-#define US_STACK_DEPTH              200         //Number of words to allocate for use as the task's stack.
+#define US_STACK_DEPTH              1024         //Number of words to allocate for use as the task's stack.
 
 #define KNX_LINK_QUEUE_LENGTH       10          //Number of units that a queue can handle
 
@@ -74,22 +77,25 @@ typedef struct {
 } knxLinkDataCon_t;
 
 
+int knxLinkDataReq(struct knxLinkHandle_s *link, int frame_index);
+
 /**
  * @brief Data service, confirmation primitive
  * @param[in] link KNX link handle from knxLinkInit()
+ * @param[in] datacon pointer to the confirmation return value, a confirmation value of KNX_LINK_DATA_CON_ERROR if error, either KNX_LINK_DATA_CON_POS or KNX_LINK_DATA_CON_NEG otherwise.
  * @remarks Blocks caller on the service confirmation queue
- * @return A confirmation value of KNX_LINK_DATA_CON_ERROR if error, either KNX_LINK_DATA_CON_POS or KNX_LINK_DATA_CON_NEG otherwise.
+ * @return 1 in NORMAL MODE, 0 otherwise
  * In case of KNX_LINK_DATA_CON_ERROR confirmation value the frame_index value is invalid (-1).
  */
-knxLinkDataCon_t knxLinkDataCon(struct knxLinkHandle_s *link);
-
+int knxLinkDataCon(struct knxLinkHandle_s *link, knxLinkDataCon_t *dataCon);
 /**
  * @brief Data service, indication primitive
  * @param[in] link KNX link handle from knxLinkInit()
+ * @param[in] frame_index pointer to the frame_index return value
  * @remarks Blocks caller on the service indication queue
- * @return -1 if error, frame index in pool otherwise
+ * @return 0 if error, 1 otherwise
  */
-int knxLinkDataInd(struct knxLinkHandle_s *link);
+int knxLinkDataInd(struct knxLinkHandle_s *link, int *frame_index);
 
 #endif /* KNX_LINK_H_ */
 

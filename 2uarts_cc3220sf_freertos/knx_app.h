@@ -17,8 +17,6 @@
 #include <ti/drivers/apps/Button.h>
 
 
-#define US_STACK_DEPTH              200         //Number of words to allocate for use as the task's stack.
-
 #define KNX_APP_QUEUE_LENGTH        10          //Number of units that a queue can handle
 
 

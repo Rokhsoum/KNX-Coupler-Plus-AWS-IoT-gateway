@@ -40,7 +40,7 @@ char knxLinkAdapterReadChar(knxLink_uart_t channel) {
 }
 
 
-void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, char *txBuffer, int len) {
+void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, uint8_t *txBuffer, int len) {
 
     UART_write(channel, txBuffer, len);
 

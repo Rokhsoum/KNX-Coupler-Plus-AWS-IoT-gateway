@@ -219,7 +219,8 @@ void mainThread(void *arg0)
     //knxLink_uart_t uarthandle2 = uartDownlink;
 
     uartUplink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_EVEN);
-    uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_ODD);
+    uartDownlink = NULL;
+    //uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_ODD);
 
 #if 0
     taskUplink_args.channel = CONFIG_UART_0;
@@ -234,7 +235,8 @@ void mainThread(void *arg0)
 #endif
 
     knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uartUplink);
-    knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uartDownlink);
+    knxlink_handle2 = NULL;
+    //knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uartDownlink);
     comm_data.objects = getCommissioningObjects();
     comm_data.objects_num = getCommissioningObjectsNum();
     comm_data.gas = getCommissioningGAs();

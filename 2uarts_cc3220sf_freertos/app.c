@@ -5,8 +5,9 @@
  *      Author: Rokhaya Soumare
  */
 
-#include <knx_link_conf.h>
+
 #include "FreeRTOS.h"
+#include <queue.h>
 #include <stdint.h>
 #include "knx_app.h"
 #include "app.h"

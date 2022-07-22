@@ -2,9 +2,14 @@
  * @file knx_link_internal.h
  * @brief KNX library project
  */
+#ifndef KNX_LINK_INTERNAL_H_
+#define KNX_LINK_INTERNAL_H_
 
 #include <stdint.h>
 #include "FreeRTOS.h"
+#include <queue.h>
+#include <semphr.h>
+#include <pthread.h>
 #include "knx_link_frame.h"
 #include "knx_link_adapter.h"
 #include <ti/drivers/UART.h>
@@ -35,5 +40,5 @@ typedef struct knxLinkHandle_s {
     uint16_t rxiaframe;                 /**< Dirección individual del trama recibida*/  //à comparer avec ia pour savoir si remote or local
 } knxLinkHandle_t;
 
-
+#endif
 

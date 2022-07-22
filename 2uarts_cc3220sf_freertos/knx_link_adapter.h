@@ -5,15 +5,14 @@
  *      Author: Rokhaya Soumare
  */
 
-#include "FreeRTOS.h"
-#include "knx_link.h"
-#include <semphr.h>
-#include <pthread.h>
-#include <stdint.h>
-#include <ti/drivers/UART.h>
-
 #ifndef KNX_LINK_ADAPTER_H_
 #define KNX_LINK_ADAPTER_H_
+
+//#include "FreeRTOS.h"
+//#include <semphr.h>
+//#include <pthread.h>
+#include <stdint.h>
+#include <ti/drivers/UART.h>
 
 
 /**
@@ -78,7 +77,7 @@ char knxLinkAdapterReadChar(knxLink_uart_t channel);
  *  @param  len        The number of bytes in the buffer that should be written
  *                     to the UART
  */
-void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, char *txBuffer, int len);
+void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, uint8_t *txBuffer, int len);
 
 
 
