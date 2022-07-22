@@ -104,7 +104,10 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
      * Si error, while(1);
      */
 
-    knxLinkParams[knxLink_handleused].knxLinkResetCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, 1);
+    knxLinkParams[knxLink_handleused].knxLinkResetCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(uint8_t));
+    if (knxLinkParams[knxLink_handleused].knxLinkResetCon == NULL) {
+        while(1);
+    }
 
     knxLinkParams[knxLink_handleused].knxLinkResetSem = xSemaphoreCreateBinary();
     if (knxLinkParams[knxLink_handleused].knxLinkResetSem == NULL) {
@@ -120,11 +123,19 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
      */
 
     knxLinkParams[knxLink_handleused].knxLinkDataReq = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(int));
+    if (knxLinkParams[knxLink_handleused].knxLinkDataReq == NULL) {
+        while(1);
+    }
 
     knxLinkParams[knxLink_handleused].knxLinkDataCon = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(knxLinkDataCon_t));
+    if (knxLinkParams[knxLink_handleused].knxLinkDataCon == NULL) {
+        while(1);
+    }
 
     knxLinkParams[knxLink_handleused].knxLinkDataInd = xQueueCreate(KNX_LINK_QUEUE_LENGTH, sizeof(int));
-
+    if (knxLinkParams[knxLink_handleused].knxLinkDataInd == NULL) {
+        while(1);
+    }
 
     //create a thread to reform the dataReq queue and perfom all he tasks to send the message
     /**
@@ -142,19 +153,17 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
        }
 
        TaskHandle_t knxLinkDataReqThreadHandle = NULL;
-       BaseType_t ret1;
-       ret1 = xTaskCreate(_knxLinkDataReqThread, "knxLinkDataReqThreadHandle", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkDataReqThreadHandle);
+       ret = xTaskCreate(_knxLinkDataReqThread, "knxLinkDataReqThreadHandle", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkDataReqThreadHandle);
 
-       if (ret1 != pdPASS ) {
+       if (ret != pdPASS ) {
            while(1);
        }
 
 
        TaskHandle_t knxLinkTxThreadHandle = NULL;
-       BaseType_t ret2;
-       ret2 = xTaskCreate(_knxLinkTxThread, "knxLinkTxThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkTxThreadHandle);
+       ret = xTaskCreate(_knxLinkTxThread, "knxLinkTxThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkTxThreadHandle);
 
-       if (ret2 != pdPASS ) {
+       if (ret != pdPASS ) {
            while(1);
        }
 
@@ -192,8 +201,8 @@ int knxLinkSetAddressReq(knxLinkHandle_t *link, uint16_t ia) {
 
         pthread_mutex_lock(&link->uartKNXMutex);
 
-        buf[0] = (uint8_t)((ia & 0xFF00) >> 8);
-        buf[1] = (uint8_t)(ia & 0x00FF);
+        buf[1] = (uint8_t)((ia & 0xFF00) >> 8);
+        buf[2] = (uint8_t)(ia & 0x00FF);
         knxLinkAdapterWriteBuffer(link->uartKNX, buf, 3);
 
         pthread_mutex_unlock(&link->uartKNXMutex);
@@ -219,7 +228,7 @@ int knxLinkResetReq(knxLinkHandle_t *link) {
      * Implementar primitiva request del servicio reset
      * Hacerlo sólo si el estado del nivel de enlace es KNX_LINK_INIT_STATE
      */
-    if ((link->knxLinkResetSem == NULL) || (knxLinkGetState(link) != KNX_LINK_INIT_STATE)) {
+    if (link->knxLinkResetSem == NULL) {
         return 0;
     }
 
@@ -259,8 +268,8 @@ static void _knxLinkDataReqThread(void *arg0) {
     knxLinkHandle_t *link = (knxLinkHandle_t *)arg0;
     // Variables locales que nos harán falta:
     int k = 0, frame_index = 0;
-    int len = KNX_LINK_STD_FRAME_MAX;
-    uint8_t encoded_frame[len];
+    int len;
+    uint8_t encoded_frame[KNX_LINK_EXT_FRAME_MAX];
     uint8_t Bufftemporal[2];
 
     /**
@@ -273,26 +282,33 @@ static void _knxLinkDataReqThread(void *arg0) {
      */
 
     while(1) {
+        if (knxLinkGetState(link) != KNX_LINK_NORMAL_STATE && link->ia == 0) {
+            vTaskDelay(10);
+            continue;
+        }
 
         xQueueReceive(link->knxLinkDataReq, &frame_index, portMAX_DELAY);
 
-        if (knxLinkGetState(link) == KNX_LINK_NORMAL_STATE && link->ia == 0) {
-            while(1);
-        }
-
-        if (knxLinkGetState(link) != KNX_LINK_NORMAL_STATE) {
+        if (knxLinkGetState(link) == KNX_LINK_NORMAL_STATE) {
 
             if (link->ia != 0) {
-
+                knxLinkFrame_t *frame;
                 knxLinkPoolAppYieldLock(frame_index);
-
-                knxLinkFrame_t frame[frame_index];
-                knxLinkEncodeFrame(frame, encoded_frame, sizeof(encoded_frame)); //juste frame si y erreur
+                frame = knxLinkPoolLinkGet(frame_index);
+                len = knxLinkEncodeFrame(frame, encoded_frame, sizeof(encoded_frame)); //juste frame si y erreur
 
                 pthread_mutex_lock(&link->uartKNXMutex);
 
-                for (k=0; k < len-1; k++) {
-                    Bufftemporal[0] = TPUART_CTRLFIELD_DATA_START? TPUART_CTRLFIELD_DATA_START : (TPUART_CTRLFIELD_DATA_CONT(frame_index)? TPUART_CTRLFIELD_DATA_CONT(frame_index) : TPUART_CTRLFIELD_DATA_END(len));
+                for (k = 0; k < len; k++) {
+                    if (k == 0) {
+                        Bufftemporal[0] = TPUART_CTRLFIELD_DATA_START;
+                    }
+                    else if (k == len-1) {
+                        Bufftemporal[0] = TPUART_CTRLFIELD_DATA_END(len);
+                    }
+                    else {
+                        Bufftemporal[0] = TPUART_CTRLFIELD_DATA_CONT(k);
+                    }
                     Bufftemporal[1] = encoded_frame[k];
                     knxLinkAdapterWriteBuffer(link->uartKNX, Bufftemporal, 2);
                 }

@@ -37,13 +37,11 @@ UART2.uart.$assign       = "UART0";
 UART2.uart.txPin.$assign = "ball.55";
 UART2.uart.rxPin.$assign = "ball.57";
 
-Button1.$name                    = "CONFIG_BUTTON_0";
-Button1.$hardware                = system.deviceData.board.components.SW2;
-Button1.gpioPin.callbackFunction = "ButtonLeftCallback";
+Button1.$name     = "CONFIG_BUTTON_0";
+Button1.$hardware = system.deviceData.board.components.SW2;
 
-Button2.$name                    = "CONFIG_BUTTON_1";
-Button2.$hardware                = system.deviceData.board.components.SW3;
-Button2.gpioPin.callbackFunction = "ButtonRightCallback";
+Button2.$name     = "CONFIG_BUTTON_1";
+Button2.$hardware = system.deviceData.board.components.SW3;
 
 LED1.$name          = "CONFIG_LED_0";
 LED1.$hardware      = system.deviceData.board.components.LED_RED;

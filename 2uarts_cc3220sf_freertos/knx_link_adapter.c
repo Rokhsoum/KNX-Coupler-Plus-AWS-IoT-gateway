@@ -33,6 +33,10 @@ knxLink_uart_t knxLinkAdapterOpen(int channel, int baudRate, int parityType) {
 
 char knxLinkAdapterReadChar(knxLink_uart_t channel) {
 
+    if (channel == NULL) {
+        return 0;
+    }
+
     char rxBuffer[1];
     UART_read(channel, rxBuffer, 1);
 
@@ -42,6 +46,10 @@ char knxLinkAdapterReadChar(knxLink_uart_t channel) {
 
 void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, uint8_t *txBuffer, int len) {
 
-    UART_write(channel, txBuffer, len);
-
+    if ((channel == NULL) || (txBuffer == NULL) || len <= 0) {
+        return;
+    }
+    else {
+        UART_write(channel, txBuffer, len);
+    }
 }
