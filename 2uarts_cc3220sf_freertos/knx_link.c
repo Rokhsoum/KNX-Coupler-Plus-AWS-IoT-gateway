@@ -57,7 +57,7 @@ static void _knxLinkRecvThread(void *arg0);
 /**
  * @brief Transmission task, manage requests from upper level
  */
-static void _knxLinkTxThread(void *arg0);
+//static void _knxLinkTxThread(void *arg0);
 
 /**
  * @brief Data request task, (do requests from upper level:changer)
@@ -151,22 +151,23 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
        if ( ret != pdPASS ) {
            while(1);
        }
-
+#if 0
        TaskHandle_t knxLinkDataReqThreadHandle = NULL;
        ret = xTaskCreate(_knxLinkDataReqThread, "knxLinkDataReqThreadHandle", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkDataReqThreadHandle);
 
        if (ret != pdPASS ) {
            while(1);
        }
+#endif
 
-
+#if 0
        TaskHandle_t knxLinkTxThreadHandle = NULL;
        ret = xTaskCreate(_knxLinkTxThread, "knxLinkTxThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxLinkTxThreadHandle);
 
        if (ret != pdPASS ) {
            while(1);
        }
-
+#endif
     /**
      * @TODO
      * Inicializar parámetros nivel de enlace, pool, etc.
@@ -522,7 +523,7 @@ static void _knxLinkRecvThread(void *arg0) {
         }
     }
 }
-
+#if 0
 static void _knxLinkTxThread(void *arg0) {
 	knxLinkHandle_t *link = (knxLinkHandle_t *)arg0;
 	int frame_index = 0;
@@ -538,3 +539,4 @@ static void _knxLinkTxThread(void *arg0) {
         knxLinkAdapterWriteBuffer(link->uartKNX, encoded_frame, 1);
     }
 }
+#endif

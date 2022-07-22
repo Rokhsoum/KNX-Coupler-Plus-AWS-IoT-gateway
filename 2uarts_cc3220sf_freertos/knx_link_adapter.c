@@ -20,6 +20,13 @@ knxLink_uart_t knxLinkAdapterOpen(int channel, int baudRate, int parityType) {
     UART_init();
 
     UART_Params_init(&params);
+
+    params.readTimeout = UART_WAIT_FOREVER;
+    params.writeTimeout = UART_WAIT_FOREVER;
+    params.readEcho = UART_ECHO_OFF;
+    params.readDataMode = UART_DATA_BINARY;
+    params.writeDataMode = UART_DATA_BINARY;
+
     params.writeMode = UART_MODE_BLOCKING;
     params.readMode = UART_MODE_BLOCKING;
     params.baudRate = (baudRate == KNX_LINK_ADAPTER_BPS_9600? 9600 : 19200);
@@ -46,10 +53,9 @@ char knxLinkAdapterReadChar(knxLink_uart_t channel) {
 
 void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, uint8_t *txBuffer, int len) {
 
-    if ((channel == NULL) || (txBuffer == NULL) || len <= 0) {
+    if ((channel == NULL) || (txBuffer == NULL) || (len <= 0)) {
         return;
     }
-    else {
-        UART_write(channel, txBuffer, len);
-    }
+
+    UART_write(channel, txBuffer, len);
 }

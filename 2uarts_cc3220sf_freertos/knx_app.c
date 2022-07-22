@@ -135,7 +135,7 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data,
         }
     }
 
-
+#if 0
     TaskHandle_t knxAppRecvThreadHandle = NULL;
     TaskHandle_t knxAppThreadHandle = NULL;
     xTaskCreate(_knxAppThread , "knxAppThread", US_STACK_DEPTH, (void*) 0, tskIDLE_PRIORITY, &knxAppThreadHandle);
@@ -154,7 +154,7 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data,
         couplerargs2.uarthandle = knxAppParams.uartUplink;
         xTaskCreate(_knxAppRecvThread, "knxAppRecvThread2", US_STACK_DEPTH, (void*) &couplerargs2, tskIDLE_PRIORITY, &knxAppRecvThreadHandle);
     }
-
+#endif
     //knxAppParams.buttonsKNXQueue = xQueueCreate(KNX_APP_QUEUE_LENGTH, sizeof(buttonMessageItem_t));
 
     return &knxAppParams;

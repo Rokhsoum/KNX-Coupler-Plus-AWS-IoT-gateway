@@ -8,7 +8,7 @@
 
 // ___---=== Declaraciones relacionadas con órdenes/respuestas de la TP-UART ===---___
 
-#define TPUART_CTRLFIELD_RESET_REQUEST                  0x01
+#define TPUART_CTRLFIELD_RESET_REQUEST                  0xF1
 #define TPUART_CTRLFIELD_STATE_REQUEST                  0x02
 #define TPUART_CTRLFIELD_ACTIVATE_BUSMON                0x05
 
