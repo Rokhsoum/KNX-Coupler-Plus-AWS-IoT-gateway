@@ -24,8 +24,8 @@
 /**
  *  Macro to define the baudRate
  */
-#define KNX_LINK_ADAPTER_BPS_9600          0
-#define KNX_LINK_ADAPTER_BPS_19200         1
+#define KNX_LINK_ADAPTER_BPS_9600          9600
+#define KNX_LINK_ADAPTER_BPS_19200         19200
 
 /**
  *  Macro to define the parity

@@ -13,10 +13,11 @@
 #include "knx_link_frame_pool.h"
 #include "knx_link_gadd_pool.h"
 
-#define US_STACK_DEPTH              1024         //Number of words to allocate for use as the task's stack.
+#define US_STACK_DEPTH              512         //Number of words to allocate for use as the task's stack.
 
 #define KNX_LINK_QUEUE_LENGTH       10          //Number of units that a queue can handle
 
+#define KNXLINK_RESET_CON_TIMEOUT   50 / portTICK_PERIOD_MS
 
 struct knxLinkHandle_s;
 

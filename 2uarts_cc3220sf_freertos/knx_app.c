@@ -102,6 +102,25 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data,
     }
 
 
+    vTaskDelay(10);
+
+    if (downlink != NULL) {
+        for (i = 0; i < 3; i++) {
+            knxLinkResetReq(downlink);
+            if (knxLinkResetCon(downlink) == KNX_LINK_DATA_CON_POS) {
+                break;
+            }
+        }
+
+        if (i >= 3) {
+            knxLinkSetState(downlink, KNX_LINK_STOP_STATE);
+        }
+        else {
+            knxLinkSetAddressReq(downlink, knxAppParams.device_ia);
+        }
+    }
+
+
     if (uplink != NULL) {
         for (i = 0; i < 3; i++) {
             knxLinkResetReq(uplink);
@@ -119,21 +138,6 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data,
     }
 
 
-    if (downlink != NULL) {
-        for (i = 0; i < 3; i++) {
-            knxLinkResetReq(downlink);
-            if (knxLinkResetCon(downlink) == KNX_LINK_DATA_CON_POS) {
-                break;
-            }
-        }
-
-        if (i >= 3) {
-            knxLinkSetState(downlink, KNX_LINK_STOP_STATE);
-        }
-        else {
-            knxLinkSetAddressReq(downlink, knxAppParams.device_ia);
-        }
-    }
 
 #if 0
     TaskHandle_t knxAppRecvThreadHandle = NULL;

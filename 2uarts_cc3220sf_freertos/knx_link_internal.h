@@ -38,6 +38,8 @@ typedef struct knxLinkHandle_s {
     uint8_t txSlot;                     /**< Índice del telegrama en el pool, transmisión (conservar de data request para data confirmation) */
     //uint8_t rxSlot;                     /**< Índice del telegrama en el pool, recepción (para data indication) */
     uint16_t rxiaframe;                 /**< Dirección individual del trama recibida*/  //à comparer avec ia pour savoir si remote or local
+    uint8_t tx_encoded_frame[KNX_LINK_EXT_FRAME_MAX];
+    uint8_t rx_buffer[KNX_LINK_EXT_FRAME_MAX];
 } knxLinkHandle_t;
 
 #endif
