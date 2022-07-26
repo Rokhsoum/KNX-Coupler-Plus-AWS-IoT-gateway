@@ -8,9 +8,6 @@
 #ifndef KNX_LINK_ADAPTER_H_
 #define KNX_LINK_ADAPTER_H_
 
-//#include "FreeRTOS.h"
-//#include <semphr.h>
-//#include <pthread.h>
 #include <stdint.h>
 #include <ti/drivers/UART.h>
 
@@ -24,7 +21,7 @@
 /**
  *  Macro to define the baudRate
  */
-#define KNX_LINK_ADAPTER_BPS_9600          9600
+#define KNX_LINK_ADAPTER_BPS_9600           9600
 #define KNX_LINK_ADAPTER_BPS_19200         19200
 
 /**
@@ -82,9 +79,9 @@ void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, uint8_t *txBuffer, int le
 
 
 void debugInit(knxLink_uart_t handle);
-
 void debug(char *msg);
 void debugPointer(char *msg, void *p);
+void debugInt(char *msg, int c);
 
 
 

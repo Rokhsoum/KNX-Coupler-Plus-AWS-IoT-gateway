@@ -9,7 +9,7 @@
 #include "FreeRTOS.h"
 #include <queue.h>
 #include <semphr.h>
-#include <pthread.h>
+//#include <pthread.h>
 #include "knx_link_frame.h"
 #include "knx_link_adapter.h"
 #include <ti/drivers/UART.h>
@@ -20,7 +20,7 @@
 typedef struct knxLinkHandle_s {
     /* UART */
     knxLink_uart_t uartKNX;             /**< Handle de acceso a la UART */
-    pthread_mutex_t uartKNXMutex;       /**< Mutex para garantizar acceso en exclusión mutua a la UART */
+    SemaphoreHandle_t uartKNXMutex;     /**< Mutex para garantizar acceso en exclusión mutua a la UART */
     /* Reset service */
     SemaphoreHandle_t knxLinkResetSem;  /**< Semáforo para reset request */
     QueueHandle_t knxLinkResetCon;      /**< Cola confirmación reset (datos uint8_t, valor confirmación) */

@@ -82,7 +82,7 @@ struct knxAppParams_s * knxAppInit(uint16_t ia, commissioning_data_t *comm_data,
     knxAppCouplerThreadArg_t couplerargs;
     knxAppCouplerThreadArg_t couplerargs2;
 
-    debugPointer("knxAppInit, link = %p\r\n", uplink);
+    //debugPointer("knxAppInit, link = %p\r\n", uplink);
 
     ga_set_init(&knxAppParams.gas_boton_0, comm_data->objects[0].gas_length);
     for (i = comm_data->objects[0].gas_start_index; i < (comm_data->objects[0].gas_length+comm_data->objects[0].gas_start_index); i++) {
@@ -280,7 +280,7 @@ static void _knxAppRecvThread(void *arg0) {
                     }
                 }
             }
-            knxLinkPoolAppUnLock(frame_index);
+            knxLinkFramePoolAppUnLock(frame_index);
         }
     }
 }

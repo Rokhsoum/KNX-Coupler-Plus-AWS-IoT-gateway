@@ -223,12 +223,12 @@ void mainThread(void *arg0)
     uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_EVEN);
 
     debugInit(uartDownlink);
-    debugPointer("mainThread, uartUplink = %p\r\n", uartUplink);
+    //debugPointer("mainThread, uartUplink = %p\r\n", uartUplink);
 
     knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uartUplink);
     knxlink_handle2 = NULL;
     //knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uartDownlink);
-    debugPointer("mainThread, handle1 = %p\r\n", knxlink_handle1);
+    //debugPointer("mainThread, handle1 = %p\r\n", knxlink_handle1);
     comm_data.objects = getCommissioningObjects();
     comm_data.objects_num = getCommissioningObjectsNum();
     comm_data.gas = getCommissioningGAs();
@@ -237,6 +237,8 @@ void mainThread(void *arg0)
 
     /* Loop forever doing nothing */
     while (1) {
+        debug("mainThread gonna sleep\r\n");
         vTaskDelay(1000);
+
     }
 }

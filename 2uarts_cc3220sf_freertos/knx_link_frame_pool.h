@@ -22,8 +22,7 @@
 typedef enum knxLinkFramePoolUser_e {
 	KNX_LINK_FRAME_POOL_FLAG_AVAILABLE = 0,
 	KNX_LINK_FRAME_POOL_FLAG_APP = 1,
-	KNX_LINK_FRAME_POOL_FLAG_DOWNLINK,
-	KNX_LINK_FRAME_POOL_FLAG_UPLINK,
+	KNX_LINK_FRAME_POOL_FLAG_LINK,
 	KNX_LINK_FRAME_POOL_FLAG_INVALID
 } knxLinkFramePoolUser_t;
 
@@ -32,119 +31,76 @@ struct knxLinkHandle_s;
 /**
  * @brief Init the frame pool
  * @return Nothing
- * All frame slots are initially available
+ * All frame slots are initially available (KNX_LINK_FRAME_POOL_FLAG_AVAILABLE).
+ * @remarks A second, third call to this function does nothing
  */
 void knxLinkFramePoolInit(void);
 
-/**
- * @brief Reserve a frame slot
- * @param[in] flag Frame slot flag
- * @return -1 if error, slot index otherwise
- * The reserved frame slot is marked with the value flag; further operations
- * on the reserved frame must match this value;
- * eg. a slot locked with KNX_LINK_POOL_FLAG_APP can only be unlocked with this same flag value.
- * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
- * the request is invalid.
- */
-int knxLinkFramePoolLock(knxLinkFramePoolUser_t flag);
+
 
 /**
- * @brief Reserve a frame slot for the application
+ * @brief Reserve a frame slot for the knx application layer
  * @return -1 if error, slot index otherwise
- * Invoked from the application to get a frame
- * Fill in the data and request delivery
+ * Invoked from the knx application layer to reserve a frame slot,
+ * fill in the data, and request delivery (to the knx link layer).
  * The data request needs the index i returned by this function as a parameter
  */
-int knxLinkPoolAppLock(void);
+int knxLinkFramePoolAppLock(void);
 
 /**
- * @brief Reserve a frame slot for the link level
- * The pool slot becomes available to the application after the reception of the frame
- * A new pool is reserved for another incoming frame
+ * @brief Reserve a frame slot for the knx link layer
+ * @return -1 if error, slot index otherwise
+ * Invoked from the knx link layer to reserve a frame slot,
+ * decode into it an incoming remote frame, and notify the arrival (indication, to the knx application layer).
+ * The data indication needs the index i returned by this function as a parameter
  */
-int knxLinkPoolLinkLock(void);
+int knxLinkFramePoolLinkLock(void);
+
 
 /**
- * @brief Reserve a frame slot for the application
- * @param[in] i Slot index returned by knxLinkAppLock()
- * @return if error, reserve a slot otherwise
+ * @brief Transfer "ownership" of a frame slot owned by the knx app layer to the knx link layer
+ * @param[in] i Slot index
+ * @remarks If the slot isn't currently owned by the knx app layer this function does nothing
  */
-void knxLinkPoolYieldLock(int i);
+void knxLinkFramePoolAppYieldLock(int i);
 
 /**
- * @brief Send frame to the application or a confirmation
- * @param[in] i Slot index returned by knxLinkAppLock()
- * If it's a remote frame, i is sent to kncLinkDataInd;
- * otherwise, i and a confirmation (positive or negative) are sent to knxLinkDataCon
+ * @brief Transfer "ownership" of a frame slot owned by the knx link layer to the knx app layer
+ * @param[in] i Slot index
+ * @remarks If the slot isn't currently owned by the knx link layer this function does nothing
  */
-void knxLinkPoolLinkYieldLock(int i);
+void knxLinkFramePoolLinkYieldLock(int i);
+
 
 /**
- * @brief Reserve a frame slot for the link level
- * @param[in] i Slot index returned by knxLinkAppLock()
- * @return if error, reserve a slot otherwise
+ * @brief Free a reserved frame slot owned by the knx app layer
+ * @param[in] i Slot index
+ * @remarks If the slot isn't currently owned by the knx app layer this function does nothing
  */
-void knxLinkPoolAppYieldLock(int i);
+void knxLinkFramePoolAppUnLock(int i);
 
 /**
- * @brief Free a previously reserved frame slot
- * @param[in] i Slot index returned by knxLinkFramePoolLock()
- * @param[in] flag Frame slot flag
- * @return Nothing
- * @remarks If i is not a valid slot index or the slot is not reserved, or the flag value does not match the slot flag value, 
- * this function does nothing.
- * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
- * the request is invalid.
+ * @brief Free a reserved frame slot owned by the knx link layer
+ * @param[in] i Slot index
+ * @remarks If the slot isn't currently owned by the knx link layer this function does nothing
  */
-void knxLinkFramePoolUnlock(int i, knxLinkFramePoolUser_t flag);
+void knxLinkFramePoolLinkUnLock(int i);
+
 
 /**
- * @brief Free a previously reserved frame slot
- * @param[in] i Slot index returned by knxLinkPoolLinkLock()
- * @return Nothing
- * @remarks If i is not a valid slot index or the slot is not reserved, or the flag value does not match the slot flag value,
- * this function does nothing.
- * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
- * the request is invalid.
- */
-void knxLinkPoolLinkUnLock(int i);
-
-/**
- * @brief Free a previously reserved frame slot
- * @param[in] i Slot index returned by knxLinkFramePoolLock()
- * @return Nothing
- * @remarks If i is not a valid slot index or the slot is not reserved,
- * this function does nothing.
- */
-void knxLinkPoolAppUnLock(int i);
-
-/**
- * @brief Get a pointer to the reserved frame slot
- * @param[in] i Slot index returned by knxLinkPoolLock()
- * @param[in] flag Frame slot flag
- * @return NULL if error, pointer to the i-th slot otherwise
- * @remarks If i is not a valid slot index or the slot is not reserved, or the flag value does not match the slot flag value, 
- * NULL is returned.
- * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
- * the request is invalid.
- */
-knxLinkFrame_t *knxLinkFramePoolGet(int i, knxLinkFramePoolUser_t flag);
-
-/**
- * @brief Get a pointer to the reserved frame slot
- * @param[in] i Slot index returned by knxLinkPoolAppLock()
- * @return NULL if error, pointer to the i-th slot otherwise
- * @remarks If i is not a valid slot index or the slot is not reserved,
- * NULL is returned.
+ * @brief Get a pointer to a reserved frame slot owned by the knx app layer
+ * @param[in] i Slot index
+ * @return NULL if error, pointer to the slot otherwise
+ * @remarks If the slot isn't currently owned by the knx app layer this function returns NULL
  */
 knxLinkFrame_t *knxLinkFramePoolAppGet(int i);
 
 /**
- * @brief Get a pointer to the reserved frame slot
- * @param[in] i Slot index returned by knxLinkPoolLock()
- * Send : Reserve as many pool slots as messages to send
- * Reception of remote frame : i is dequeued in the pool, already reserved for the application
+ * @brief Get a pointer to a reserved frame slot owned by the knx link layer
+ * @param[in] i Slot index
+ * @return NULL if error, pointer to the slot otherwise
+ * @remarks If the slot isn't currently owned by the knx link layer this function returns NULL
  */
-knxLinkFrame_t *knxLinkPoolLinkGet(int i);
+knxLinkFrame_t *knxLinkFramePoolLinkGet(int i);
 
 #endif /* KNX_LINK_FRAME_POOL_H_ */

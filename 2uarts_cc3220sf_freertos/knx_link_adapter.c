@@ -2,10 +2,12 @@
  * knx_link_adapter.c
  */
 
-#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
+
 #include "FreeRTOS.h"
+#include "semphr.h"
+
 #include "knx_link_internal.h"
 #include "knx_link_adapter.h"
 
@@ -15,12 +17,14 @@
 /* Driver Header files */
 #include <ti/drivers/UART.h>
 
+
 knxLink_uart_t debugUart = NULL;
-pthread_mutex_t debugUartMutex;
+SemaphoreHandle_t  debugUartMutex;
 int debugerror = 0;
 
 knxLink_uart_t knxLinkAdapterOpen(int channel, int baudRate, int parityType) {
-    UART_Params         params;
+    UART_Params params;
+    UART_Handle res;
 
     UART_Params_init(&params);
 
@@ -31,60 +35,58 @@ knxLink_uart_t knxLinkAdapterOpen(int channel, int baudRate, int parityType) {
     params.writeDataMode = UART_DATA_BINARY;
     params.writeMode = UART_MODE_BLOCKING;
     params.readMode = UART_MODE_BLOCKING;
-    //params.baudRate = (baudRate == KNX_LINK_ADAPTER_BPS_9600? 9600 : 19200);
-    params.baudRate = (baudRate == KNX_LINK_ADAPTER_BPS_9600? KNX_LINK_ADAPTER_BPS_9600 : KNX_LINK_ADAPTER_BPS_19200);
+    params.baudRate = baudRate; // (baudRate == KNX_LINK_ADAPTER_BPS_9600? KNX_LINK_ADAPTER_BPS_9600 : KNX_LINK_ADAPTER_BPS_19200);
     params.parityType = (parityType == KNX_LINK_ADAPTER_PARITY_NONE? UART_PAR_NONE : (parityType == KNX_LINK_ADAPTER_PARITY_EVEN? UART_PAR_EVEN : UART_PAR_ODD));
 
-    knxLink_uart_t res = UART_open(channel, &params);
-
-    if (res != NULL) {
-        char rxBuffer[1] = {1};
-        UART_write(res, rxBuffer, 1);
-    }
-    return res;
+    res = UART_open(channel, &params);
+    return (knxLink_uart_t)res;
 }
-
 
 char knxLinkAdapterReadChar(knxLink_uart_t channel) {
+    char rxBuffer;
 
+    //debugPointer("adapterRead, num = %p\r\n", channel);
     if (channel == NULL) {
+        //debug("adapterRead, num = NULL\r\n");
         return 0;
     }
-
-    char rxBuffer[1];
-    if (UART_read(channel, rxBuffer, 1) != 1) {
+    debug("adapterRead gonna read\r\n");
+    if (UART_read(channel, &rxBuffer, 1) != 1) {
+        debug("adapterRead, read failed\r\n");
         return 0;
     }
-
-    return rxBuffer[0];
+    debugInt("adapterRead, read ok (%02x)\r\n", rxBuffer);
+    return rxBuffer;
 }
-
 
 void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, uint8_t *txBuffer, int len) {
 
     if ((channel == NULL) || (txBuffer == NULL) || (len <= 0)) {
         return;
     }
-
     UART_write(channel, txBuffer, len);
 }
 
+
+
 void debugInit(knxLink_uart_t handle) {
 
-    if(pthread_mutex_init(&debugUartMutex, NULL)!= 0) {
+    debugUartMutex = xSemaphoreCreateMutex();
+    if(debugUartMutex == NULL) {
         while(1);
     }
     debugUart = handle;
 }
 
 void debug(char *msg) {
-
     if (debugUart != NULL) {
-        pthread_mutex_lock(&debugUartMutex);
-
-        UART_write(debugUart, msg, strlen(msg));
-
-        pthread_mutex_unlock(&debugUartMutex);
+        if (xSemaphoreTake(debugUartMutex, portMAX_DELAY) == pdTRUE) {
+            UART_write(debugUart, msg, strlen(msg));
+            xSemaphoreGive(debugUartMutex);
+        }
+        else {
+            debugerror++;
+        }
     }
     else {
         debugerror++;
@@ -96,11 +98,29 @@ void debugPointer(char *msg, void *p) {
     static char buffer[128];
 
     if (debugUart != NULL) {
-        if (pthread_mutex_lock(&debugUartMutex) == 0) {
-
+        if (xSemaphoreTake(debugUartMutex, portMAX_DELAY) == pdTRUE) {
             snprintf(buffer, sizeof(buffer), msg, p);
             UART_write(debugUart, buffer, strlen(buffer));
-            pthread_mutex_unlock(&debugUartMutex);
+            xSemaphoreGive(debugUartMutex);
+        }
+        else {
+            debugerror++;
+        }
+    }
+    else {
+        debugerror++;
+    }
+
+}
+
+void debugInt(char *msg, int c) {
+    static char buffer[128];
+
+    if (debugUart != NULL) {
+        if (xSemaphoreTake(debugUartMutex, portMAX_DELAY) == pdTRUE) {
+            snprintf(buffer, sizeof(buffer), msg, c);
+            UART_write(debugUart, buffer, strlen(buffer));
+            xSemaphoreGive(debugUartMutex);
         }
         else {
             debugerror++;

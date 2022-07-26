@@ -21,10 +21,57 @@ typedef struct knxLinkFramePool_s {
 
 static knxLinkFramePool_t knxLinkFramePool = { .initialized = 0 };
 
+/**
+ * @brief Reserve a frame slot
+ * @param[in] flag Ownership flag
+ * @return -1 if error, slot index otherwise
+ * The reserved frame slot is marked with the ownership flag; further operations
+ * on the reserved frame must match this value:
+ * eg. a slot locked with KNX_LINK_POOL_FLAG_APP can only be unlocked with this same flag value.
+ * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
+ * the request is invalid.
+ */
+static int _knxLinkFramePoolLock(knxLinkFramePoolUser_t flag);
+
+/**
+ * @brief Free a previously reserved frame slot
+ * @param[in] i Slot index
+ * @param[in] flag Ownership flag
+ * @remarks If i is not a valid slot index or the slot is not reserved, or the ownership flag value does not match the slot flag value,
+ * this function does nothing.
+ * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
+ * the request is invalid.
+ */
+static void _knxLinkFramePoolUnlock(int i, knxLinkFramePoolUser_t flag);
+
+/**
+ * @brief Transfer ownership of a frame slot
+ * @param[in] i Slot index
+ * @param[in] flag_from Current ownership flag
+ * @param[in] flag_to New ownership flag
+ */
+static void _knxLinkFramePoolYieldLock(int i, knxLinkFramePoolUser_t flag_from, knxLinkFramePoolUser_t flag_to);
+
+/**
+ * @brief Get a pointer to the reserved frame slot
+ * @param[in] i Slot index returned by knxLinkPoolLock()
+ * @param[in] flag Ownership flag
+ * @return NULL if error, pointer to the i-th slot otherwise
+ * @remarks If i is not a valid slot index or the slot is not reserved, or the ownership flag does not match the slot flag value,
+ * NULL is returned.
+ * If (flag <= KNX_LINK_POOL_FLAG_AVAILABLE) or (flag >= KNX_LINK_POOL_FLAG_INVALID)
+ * the request is invalid.
+ */
+static knxLinkFrame_t *_knxLinkFramePoolGet(int i, knxLinkFramePoolUser_t flag);
+
 
 void knxLinkFramePoolInit(void) {
     int i;
 
+    if (knxLinkFramePool.initialized) {
+        // Already initialized. Avoid a 2nd, 3rd, etc. initialization
+        return;
+    }
     knxLinkFramePool.initialized = 0;
     knxLinkFramePool.mutex = xSemaphoreCreateMutex();
     if (knxLinkFramePool.mutex == NULL) {
@@ -36,260 +83,134 @@ void knxLinkFramePoolInit(void) {
     knxLinkFramePool.initialized = 1;
 }
 
-int knxLinkFramePoolLock(knxLinkFramePoolUser_t flag) {
+
+static int _knxLinkFramePoolLock(knxLinkFramePoolUser_t flag) {
     int i, res = -1;
 
     if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
 		return res;
 	}
-    else {
-        if ((flag <= KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) || (flag >= KNX_LINK_FRAME_POOL_FLAG_INVALID)) {
-            return res;
-        }
 
-        if (xSemaphoreTake(knxLinkFramePool.mutex, portMAX_DELAY) == pdFALSE) {
-            return res;
-        }
-
-        for (i = 0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) {
-                knxLinkFramePool.flags[i] = flag;
-                res = i;
-                break;
-            }
-        }
-        xSemaphoreGive(knxLinkFramePool.mutex);
+    if ((flag <= KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) || (flag >= KNX_LINK_FRAME_POOL_FLAG_INVALID)) {
         return res;
     }
+
+    if (xSemaphoreTake(knxLinkFramePool.mutex, portMAX_DELAY) == pdFALSE) {
+        return res;
+    }
+
+    for (i = 0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
+        if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) {
+            // Found an available slot, reserve it and return its index
+            knxLinkFramePool.flags[i] = flag;
+            res = i;
+            break;
+        }
+    }
+    xSemaphoreGive(knxLinkFramePool.mutex);
+    return res;
+}
+
+int knxLinkFramePoolAppLock(void) {
+    return _knxLinkFramePoolLock(KNX_LINK_FRAME_POOL_FLAG_APP);
+}
+
+int knxLinkFramePoolLinkLock(void) {
+    return _knxLinkFramePoolLock(KNX_LINK_FRAME_POOL_FLAG_LINK);
 }
 
 
-int knxLinkPoolAppLock(void) {
-    int i, res = -1;
 
-    if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
-        return res;
-    }
-    else {
-        for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            if(knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_APP) {
-                res = i;
-            }
-            else {
-                res = -1;
-            }
-        }
-        return res;
-    }
-}
-
-
-int knxLinkPoolLinkLock(void) {
-    int i, res = -1;
-
-    if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
-        return res;
-    }
-    else {
-        for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            if(knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_UPLINK) {
-                res = i;
-            }
-            else {
-                res = -1;
-            }
-        }
-        return res;
-    }
-}
-
-void knxLinkPoolYieldLock(int i) {
-
+static void _knxLinkFramePoolYieldLock(int i, knxLinkFramePoolUser_t flag_from, knxLinkFramePoolUser_t flag_to) {
     if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
         return;
     }
-    else {
-        knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_UPLINK;
-
-
-        for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_UPLINK) {
-                knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_APP;
-            }
-            else {
-                return;
-            }
-        }
+    if ((flag_from <= KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) || (flag_from >= KNX_LINK_FRAME_POOL_FLAG_INVALID)) {
+        return;
     }
+    if ((flag_to <= KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) || (flag_to >= KNX_LINK_FRAME_POOL_FLAG_INVALID)) {
+        return;
+    }
+    if (flag_from == flag_to) {
+        return;
+    }
+    if ( (i < 0) || (i >= KNX_LINK_FRAME_POOL_SIZE) ) {
+        return;
+    }
+    if (xSemaphoreTake(knxLinkFramePool.mutex, portMAX_DELAY) == pdFALSE) {
+        return;
+    }
+    if (knxLinkFramePool.flags[i] == flag_from) {
+        knxLinkFramePool.flags[i] = flag_to;
+    }
+    xSemaphoreGive(knxLinkFramePool.mutex);
+}
+
+void knxLinkFramePoolAppYieldLock(int i) {
+    _knxLinkFramePoolYieldLock(i, KNX_LINK_FRAME_POOL_FLAG_APP, KNX_LINK_FRAME_POOL_FLAG_LINK);
+}
+
+void knxLinkFramePoolLinkYieldLock(int i) {
+    _knxLinkFramePoolYieldLock(i, KNX_LINK_FRAME_POOL_FLAG_LINK, KNX_LINK_FRAME_POOL_FLAG_APP);
 }
 
 
-void knxLinkPoolLinkYieldLock(int i) {
 
+static void _knxLinkFramePoolUnlock(int i, knxLinkFramePoolUser_t flag) {
     if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
         return;
     }
-    else {
-        knxLinkHandle_t *link = 0;
-        knxLinkDataCon_t con;
-
-        if(knxLinkFramePool.frames[i].sa != link->ia) {
-            xQueueSend(link->knxLinkDataInd, &i, portMAX_DELAY);
-        }
-        else {
-            con.frame_index = i;
-            xQueueSend(link->knxLinkDataCon, &con, portMAX_DELAY);
-        }
-    }
-}
-
-
-void knxLinkPoolAppYieldLock(int i) {
-
-    if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
+    if ((flag <= KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) || (flag >= KNX_LINK_FRAME_POOL_FLAG_INVALID)) {
         return;
     }
-    else {
-        knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_APP;
-
-        for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_APP) {
-                knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_UPLINK;
-            }
-            else {
-                return;
-            }
-        }
-    }
-}
-
-
-void knxLinkFramePoolUnlock(int i, knxLinkFramePoolUser_t flag) {
-	if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
-		return;
-	}
-	else {
-	    if ((flag <= KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) || (flag >= KNX_LINK_FRAME_POOL_FLAG_INVALID)) {
-	        return;
-	    }
-
-	    if ( (i >= 0) && (i < KNX_LINK_FRAME_POOL_SIZE) ) {
-	        if (xSemaphoreTake(knxLinkFramePool.mutex, portMAX_DELAY) == pdFALSE) {
-	            return;
-	        }
-
-	        if (knxLinkFramePool.flags[i] == flag) {
-	            knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_AVAILABLE;
-	        }
-
-	        xSemaphoreGive(knxLinkFramePool.mutex);
-	    }
-	}
-}
-
-void knxLinkPoolLinkUnLock(int i) {
-
-    if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
+    if ( (i < 0) || (i >= KNX_LINK_FRAME_POOL_SIZE) ) {
         return;
     }
-    else {
-        knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_UPLINK? KNX_LINK_FRAME_POOL_FLAG_UPLINK : KNX_LINK_FRAME_POOL_FLAG_DOWNLINK;
-
-        for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_UPLINK || KNX_LINK_FRAME_POOL_FLAG_DOWNLINK) {
-                knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_AVAILABLE;
-            }
-            else {
-                return;
-            }
-
-            if ( (i > KNX_LINK_FRAME_POOL_SIZE) || (i < 0) ) {
-                return;
-            }
-        }
-    }
-}
-
-void knxLinkPoolAppUnLock(int i) {
-
-    if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
+    if (xSemaphoreTake(knxLinkFramePool.mutex, portMAX_DELAY) == pdFALSE) {
         return;
     }
-    else {
-        knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_APP;
-
-        for (i=0; i < KNX_LINK_FRAME_POOL_SIZE; i++) {
-            if (knxLinkFramePool.flags[i] == KNX_LINK_FRAME_POOL_FLAG_APP) {
-                knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_AVAILABLE;
-            }
-            else {
-                return;
-            }
-
-            if ( (i > KNX_LINK_FRAME_POOL_SIZE) || (i < 0) ) {
-                return;
-            }
-        }
+    if (knxLinkFramePool.flags[i] == flag) {
+        knxLinkFramePool.flags[i] = KNX_LINK_FRAME_POOL_FLAG_AVAILABLE;
     }
+    xSemaphoreGive(knxLinkFramePool.mutex);
 }
 
-knxLinkFrame_t *knxLinkFramePoolGet(int i, knxLinkFramePoolUser_t flag) {
+void knxLinkFramePoolAppUnLock(int i) {
+    _knxLinkFramePoolUnlock(i, KNX_LINK_FRAME_POOL_FLAG_APP);
+}
+
+void knxLinkFramePoolLinkUnLock(int i) {
+    _knxLinkFramePoolUnlock(i, KNX_LINK_FRAME_POOL_FLAG_LINK);
+}
+
+
+
+static knxLinkFrame_t *_knxLinkFramePoolGet(int i, knxLinkFramePoolUser_t flag) {
 	knxLinkFrame_t *res = NULL;
+
 	if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
 		return res;
 	}
-
 	if ((flag <= KNX_LINK_FRAME_POOL_FLAG_AVAILABLE) || (flag >= KNX_LINK_FRAME_POOL_FLAG_INVALID)) {
 		return res;
 	}
-
-	else {
-	    if ( (i >= 0) && (i < KNX_LINK_FRAME_POOL_SIZE) ) {
-	        if (xSemaphoreTake(knxLinkFramePool.mutex, portMAX_DELAY) == pdFALSE) {
-	            return res;
-	        }
-	        if (knxLinkFramePool.flags[i] == flag) {
-	            res = &knxLinkFramePool.frames[i];
-	        }
-	        xSemaphoreGive(knxLinkFramePool.mutex);
-	    }
-	    return res;
-	}
+    if ( (i < 0) || (i >= KNX_LINK_FRAME_POOL_SIZE) ) {
+        return res;
+    }
+    if (xSemaphoreTake(knxLinkFramePool.mutex, portMAX_DELAY) == pdFALSE) {
+        return res;
+    }
+    if (knxLinkFramePool.flags[i] == flag) {
+        res = &knxLinkFramePool.frames[i];
+    }
+    xSemaphoreGive(knxLinkFramePool.mutex);
+    return res;
 }
-
 
 knxLinkFrame_t *knxLinkFramePoolAppGet(int i) {
-    knxLinkFrame_t *res = NULL;
-
-    if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
-        return res;
-    }
-    else {
-        if ( (i > KNX_LINK_FRAME_POOL_SIZE) || (i < 0) ) {
-            return res;
-        }
-
-        if (knxLinkFramePool.flags[i] != KNX_LINK_FRAME_POOL_FLAG_APP) {
-            return res;
-        }
-        return res;
-    }
+    return _knxLinkFramePoolGet(i, KNX_LINK_FRAME_POOL_FLAG_APP);
 }
 
-
-knxLinkFrame_t *knxLinkPoolLinkGet(int i) {
-    knxLinkFrame_t *res = NULL;
-
-    if (!knxLinkFramePool.initialized || (knxLinkFramePool.mutex == NULL)) {
-        return res;
-    }
-
-    if ( (i > KNX_LINK_FRAME_POOL_SIZE) || (i < 0) ) {
-        return res;
-    }
-
-    if (knxLinkFramePool.flags[i] != KNX_LINK_FRAME_POOL_FLAG_UPLINK) {
-        return res;
-    }
-    return res;
+knxLinkFrame_t *knxLinkFramePoolLinkGet(int i) {
+    return _knxLinkFramePoolGet(i, KNX_LINK_FRAME_POOL_FLAG_LINK);
 }
