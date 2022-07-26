@@ -81,4 +81,11 @@ void knxLinkAdapterWriteBuffer(knxLink_uart_t channel, uint8_t *txBuffer, int le
 
 
 
+void debugInit(knxLink_uart_t handle);
+
+void debug(char *msg);
+void debugPointer(char *msg, void *p);
+
+
+
 #endif /* KNX_LINK_ADAPTER_H_ */

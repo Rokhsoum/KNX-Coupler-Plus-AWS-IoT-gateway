@@ -83,6 +83,10 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
     }
 
     knxLinkParams[knxLink_handleused].uartKNX = uartlink;
+
+    debugPointer("knxLinkInit, uart = %p\r\n", knxLinkParams[knxLink_handleused].uartKNX);
+    debugPointer("knxLinkInit, link = %p\r\n", &knxLinkParams[knxLink_handleused]);
+
     /**
      * @TODO
      * Inicializar mutex uartKNXMutex.
@@ -148,9 +152,14 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
        BaseType_t ret;
        ret = xTaskCreate(_knxLinkRecvThread, "knxLinkRecvThread", US_STACK_DEPTH, (void*) &knxLinkParams[knxLink_handleused], tskIDLE_PRIORITY, &knxLinkRecvThreadHandle);
 
+       debugPointer("knxLinkInit, recvThread = %p\r\n", knxLinkRecvThreadHandle);
+
        if ( ret != pdPASS ) {
+           debug("knxLinkInit, Thread create error\r\n");
            while(1);
        }
+
+       debug("knxLinkInit, Thread created\r\n");
 #if 0
        TaskHandle_t knxLinkDataReqThreadHandle = NULL;
        ret = xTaskCreate(_knxLinkDataReqThread, "knxLinkDataReqThreadHandle", US_STACK_DEPTH, (void*) &knxLinkParams[knxLink_handleused], tskIDLE_PRIORITY, &knxLinkDataReqThreadHandle);
@@ -174,6 +183,7 @@ struct knxLinkHandle_s * knxLinkInit(uint16_t ia, knxLink_uart_t uartlink) {
 
        knxLinkFramePoolInit();
 
+       debug("knxLinkInit, end\r\n");
 
        return &knxLinkParams[knxLink_handleused++];
 }
@@ -362,6 +372,9 @@ static void _knxLinkRecvThread(void *arg0) {
     uint16_t sa = 0;
     knxLinkDataCon_t con;
     int frame_index = knxLinkPoolLinkLock();
+
+    debugPointer("_knxLinkRecvThread, uart = %p\r\n", link->uartKNX);
+    debugPointer("_knxLinkRecvThread, link = %p\r\n", link);
 
     while(1) {
         data = knxLinkAdapterReadChar(link->uartKNX);

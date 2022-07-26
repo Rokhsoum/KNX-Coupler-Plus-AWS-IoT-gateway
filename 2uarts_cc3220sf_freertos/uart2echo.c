@@ -145,7 +145,7 @@ void mainThread(void *arg0)
 
     /* Call driver init functions */
     GPIO_init();
-   // UART_init();
+    UART_init();
 
     /* Configure the LED pin */
     GPIO_setConfig(CONFIG_LED_0_GPIO, GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW);
@@ -220,23 +220,15 @@ void mainThread(void *arg0)
 
     uartUplink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_UPLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_EVEN);
     //uartDownlink = NULL;
-    uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_ODD);
+    uartDownlink = knxLinkAdapterOpen(KNX_LINK_ADAPTER_DOWNLINK, KNX_LINK_ADAPTER_BPS_9600, KNX_LINK_ADAPTER_PARITY_EVEN);
 
-#if 0
-    taskUplink_args.channel = CONFIG_UART_0;
-    taskUplink_args.uart    = uartUplink;
-    memset(taskUplink_args.name, '\0', UART_CH_NAME);
-    strncpy(taskUplink_args.name, "UPLINK", UART_CH_NAME);
-
-    taskDownlink_args.channel = CONFIG_UART_1;
-    taskDownlink_args.uart    = uartDownlink;
-    memset(taskDownlink_args.name, '\0', UART_CH_NAME);
-    strncpy(taskDownlink_args.name, "DOWNLINK", UART_CH_NAME);
-#endif
+    debugInit(uartDownlink);
+    debugPointer("mainThread, uartUplink = %p\r\n", uartUplink);
 
     knxlink_handle1 = knxLinkInit(MY_IA_ADDRESS, uartUplink);
-    //knxlink_handle2 = NULL;
-    knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uartDownlink);
+    knxlink_handle2 = NULL;
+    //knxlink_handle2 = knxLinkInit(MY_IA_ADDRESS, uartDownlink);
+    debugPointer("mainThread, handle1 = %p\r\n", knxlink_handle1);
     comm_data.objects = getCommissioningObjects();
     comm_data.objects_num = getCommissioningObjectsNum();
     comm_data.gas = getCommissioningGAs();
